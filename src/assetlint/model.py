@@ -20,7 +20,12 @@ class Asset:
     """One file to check."""
 
     path: Path  # absolute path on disk
-    rel: str  # path relative to the checked folder, with forward slashes
+    rel: str  # relative to the root (the config's folder); patterns match this
+    shown: str = ""  # as reports show it; the engine fills it in, else `rel`
+
+    @property
+    def display(self) -> str:
+        return self.shown or self.rel
 
     @property
     def name(self) -> str:

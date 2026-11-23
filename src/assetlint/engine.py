@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -70,14 +71,16 @@ def run(
 ) -> Result:
     """Check every asset under `target` against the active rules."""
     display_root = display_root.resolve() if display_root else default_display_root()
-    assets = discover(target, config, root)
+    assets = [
+        replace(asset, shown=display_path(asset.path, display_root))
+        for asset in discover(target, config, root)
+    ]
     settings = {asset: config.rules_for(asset.rel) for asset in assets}
     result = Result(files_checked=len(assets))
 
     def add(rule: Rule[Any], asset: Asset, message: str) -> None:
         severity = _rule_config(settings[asset], rule).severity
-        path = display_path(asset.path, display_root)
-        result.findings.append(Finding(rule.id, severity, path, message))
+        result.findings.append(Finding(rule.id, severity, asset.display, message))
 
     for rule in build_rules():
         for asset in assets:

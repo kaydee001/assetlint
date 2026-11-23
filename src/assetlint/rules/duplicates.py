@@ -37,7 +37,7 @@ class DuplicatesRule(Rule[DuplicatesRuleConfig]):
                 if len(copies) < 2:
                     continue
                 for asset in copies:
-                    others = ", ".join(f"'{a.rel}'" for a in copies if a is not asset)
+                    others = ", ".join(f"'{a.display}'" for a in copies if a is not asset)
                     yield asset, f"same content as {others}"
 
 

@@ -89,6 +89,19 @@ def test_duplicates_are_found_across_folders_with_different_settings(tmp_path: P
     }
 
 
+def test_messages_name_other_files_as_reports_show_them(tmp_path: Path) -> None:
+    """The duplicate's path in the message matches the report's paths, not the config's."""
+    assets = tmp_path / "game" / "assets"
+    assets.mkdir(parents=True)
+    config = config_from("", assets.parent)
+    for rel in ("SM_A.obj", "old/SM_A.obj"):
+        (assets / rel).parent.mkdir(exist_ok=True)
+        (assets / rel).write_text(obj_text(comment="same"))
+    result = run(assets, config, root=assets.parent, display_root=tmp_path)
+    messages = {f.path: f.message for f in result.findings if f.rule == "duplicates"}
+    assert messages["game/assets/SM_A.obj"] == "same content as 'game/assets/old/SM_A.obj'"
+
+
 @pytest.mark.parametrize(
     ("text", "location"),
     [
