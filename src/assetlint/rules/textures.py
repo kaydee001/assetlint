@@ -14,16 +14,16 @@ class TexturesRule(Rule[TexturesRuleConfig]):
     id = "textures"
     description = "Textures have power-of-two sizes within the maximum."
 
-    def check(self, asset: Asset) -> Iterator[str]:
+    def check(self, asset: Asset, config: TexturesRuleConfig) -> Iterator[str]:
         image = asset.image
         if not isinstance(image, ImageInfo):
             return
         dims = f"{image.width}x{image.height}"
 
-        if self.config.power_of_two and not (_pow2(image.width) and _pow2(image.height)):
+        if config.power_of_two and not (_pow2(image.width) and _pow2(image.height)):
             yield f"{dims} isn't a power of two on each side (e.g. 512, 1024, 2048)"
 
-        largest = self.config.max_size
+        largest = config.max_size
         if largest is not None and max(image.width, image.height) > largest:
             yield f"{dims}, over the maximum of {largest}"
 

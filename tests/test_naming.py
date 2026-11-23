@@ -7,13 +7,14 @@ from assetlint.model import Asset
 from assetlint.rules.naming import NamingRule
 
 
-def messages(rule: NamingRule, filename: str) -> list[str]:
-    return list(rule.check(Asset(path=Path("/assets", filename), rel=filename)))
+def messages(bound: tuple[NamingRule, NamingRuleConfig], filename: str) -> list[str]:
+    rule, config = bound
+    return list(rule.check(Asset(path=Path("/assets", filename), rel=filename), config))
 
 
 @pytest.mark.parametrize("filename", ["SM_Crate.glb", "crate_01.png", "rock-large.obj"])
 def test_default_pattern_accepts_plain_names(filename: str) -> None:
-    assert messages(NamingRule(NamingRuleConfig()), filename) == []
+    assert messages((NamingRule(), NamingRuleConfig()), filename) == []
 
 
 @pytest.mark.parametrize(
@@ -25,23 +26,23 @@ def test_default_pattern_accepts_plain_names(filename: str) -> None:
     ],
 )
 def test_default_pattern_rejects_bad_names(filename: str, hint: str) -> None:
-    [message] = messages(NamingRule(NamingRuleConfig()), filename)
+    [message] = messages((NamingRule(), NamingRuleConfig()), filename)
     assert "doesn't match the naming pattern" in message
     assert hint in message
 
 
 def test_missing_prefix_is_reported() -> None:
-    rule = NamingRule(NamingRuleConfig(prefixes={".png": "T_"}))
+    rule = (NamingRule(), NamingRuleConfig(prefixes={".png": "T_"}))
     assert messages(rule, "T_Crate.png") == []
     assert messages(rule, "Crate.png") == ["'Crate.png' should start with 'T_' (.png files)"]
 
 
 def test_prefix_matches_extension_case_insensitively() -> None:
-    rule = NamingRule(NamingRuleConfig(prefixes={"PNG": "T_"}))
+    rule = (NamingRule(), NamingRuleConfig(prefixes={"PNG": "T_"}))
     assert messages(rule, "Crate.PNG") == ["'Crate.PNG' should start with 'T_' (.png files)"]
 
 
 def test_pattern_must_match_the_whole_name() -> None:
-    rule = NamingRule(NamingRuleConfig(pattern="[A-Z]+"))
+    rule = (NamingRule(), NamingRuleConfig(pattern="[A-Z]+"))
     assert messages(rule, "ABC.glb") == []
     assert len(messages(rule, "ABCdef.glb")) == 1

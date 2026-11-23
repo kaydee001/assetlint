@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import re
 import tomllib
+from fnmatch import fnmatchcase
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -13,6 +14,7 @@ from pydantic import (
     ConfigDict,
     Field,
     PositiveInt,
+    PrivateAttr,
     ValidationError,
     field_validator,
 )
@@ -152,18 +154,63 @@ class RulesConfig(_Strict):
     references: ReferencesRuleConfig = Field(default_factory=ReferencesRuleConfig)
 
 
+class Override(_Strict):
+    """Rule settings for some folders or files, e.g. a bigger triangle budget for characters/."""
+
+    # Path patterns, like `exclude`.
+    paths: list[str] = Field(min_length=1)
+    # Rule tables as in [rules]; only the keys given here change.
+    rules: RulesConfig = Field(default_factory=RulesConfig)
+
+
 class Config(_Strict):
     # Only files with these extensions are checked.
     extensions: list[str] = Field(default_factory=lambda: list(DEFAULT_EXTENSIONS))
-    # Glob patterns, matched against paths relative to the checked folder,
-    # written with forward slashes (e.g. "build/*", "*_backup.*").
+    # Path patterns to skip. Paths are relative to the config file's folder (or
+    # the checked folder when there is no config), with forward slashes.
+    # `*` matches across folders, and a pattern ending in `/` matches everything
+    # under that folder: "build/", "*_backup.*", "props/old/*.png".
     exclude: list[str] = Field(default_factory=list)
     rules: RulesConfig = Field(default_factory=RulesConfig)
+    # Applied in order on top of [rules] for matching paths; the last match wins.
+    overrides: list[Override] = Field(default_factory=list)
+    # Resolved rule settings, by the indexes of the overrides that matched.
+    _resolved: dict[tuple[int, ...], RulesConfig] = PrivateAttr(default_factory=dict)
+
+    def rules_for(self, rel: str) -> RulesConfig:
+        """The rule settings for one path, with every matching override applied."""
+        matching = tuple(
+            i for i, o in enumerate(self.overrides) if any(path_matches(rel, p) for p in o.paths)
+        )
+        if not matching:
+            return self.rules
+        cached = self._resolved.get(matching)
+        if cached is None:
+            merged = self.rules.model_dump(exclude_unset=True)
+            for index in matching:
+                _deep_merge(merged, self.overrides[index].rules.model_dump(exclude_unset=True))
+            cached = self._resolved[matching] = RulesConfig.model_validate(merged)
+        return cached
 
     @field_validator("extensions")
     @classmethod
     def _normalize_extensions(cls, value: list[str]) -> list[str]:
         return sorted({_normalize_extension(ext) for ext in value})
+
+
+def path_matches(rel: str, pattern: str) -> bool:
+    if pattern.endswith("/"):
+        return rel.startswith(pattern)
+    return fnmatchcase(rel, pattern)
+
+
+def _deep_merge(into: dict[str, Any], new: dict[str, Any]) -> None:
+    """Tables merge key by key (so `prefixes` gains entries); other values replace."""
+    for key, value in new.items():
+        if isinstance(value, dict) and isinstance(into.get(key), dict):
+            _deep_merge(into[key], value)
+        else:
+            into[key] = value
 
 
 def find_config(start: Path) -> Path | None:

@@ -13,8 +13,8 @@ class SizeRule(Rule[SizeRuleConfig]):
     id = "size"
     description = "Files stay under the size limit for their type."
 
-    def check(self, asset: Asset) -> Iterator[str]:
-        limit = self.config.max_by_type.get(asset.ext, self.config.max)
+    def check(self, asset: Asset, config: SizeRuleConfig) -> Iterator[str]:
+        limit = config.max_by_type.get(asset.ext, config.max)
         if limit is not None and asset.size > limit:
             size_text, limit_text = human_size(asset.size), human_size(limit)
             if size_text == limit_text:  # rounding hides the difference; show exact bytes

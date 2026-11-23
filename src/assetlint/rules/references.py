@@ -20,11 +20,10 @@ class ReferencesRule(Rule[ReferencesRuleConfig]):
     id = "references"
     description = "Files a mesh refers to exist, with relative paths that work on every OS."
 
-    def __init__(self, config: ReferencesRuleConfig) -> None:
-        super().__init__(config)
+    def __init__(self) -> None:
         self._listings: dict[Path, list[str] | None] = {}
 
-    def check(self, asset: Asset) -> Iterator[str]:
+    def check(self, asset: Asset, config: ReferencesRuleConfig) -> Iterator[str]:
         mesh = asset.mesh
         if not isinstance(mesh, MeshInfo):
             return

@@ -17,11 +17,10 @@ class DuplicatesRule(Rule[DuplicatesRuleConfig]):
     id = "duplicates"
     description = "No two files have the same content."
 
-    def __init__(self, config: DuplicatesRuleConfig) -> None:
-        super().__init__(config)
+    def __init__(self) -> None:
         self._by_size: dict[int, list[Asset]] = defaultdict(list)
 
-    def check(self, asset: Asset) -> Iterator[str]:
+    def check(self, asset: Asset, config: DuplicatesRuleConfig) -> Iterator[str]:
         if asset.size > 0:  # empty files are the formats rule's business
             self._by_size[asset.size].append(asset)
         return iter(())

@@ -14,8 +14,8 @@ class TrianglesRule(Rule[TrianglesRuleConfig]):
     id = "triangles"
     description = "Meshes stay within the triangle budget."
 
-    def check(self, asset: Asset) -> Iterator[str]:
-        budget = self.config.max
+    def check(self, asset: Asset, config: TrianglesRuleConfig) -> Iterator[str]:
+        budget = config.max
         mesh = asset.mesh
         if budget is not None and isinstance(mesh, MeshInfo) and mesh.triangles > budget:
             yield f"{mesh.triangles:,} triangles, over the budget of {budget:,}"

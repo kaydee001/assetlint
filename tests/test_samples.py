@@ -30,7 +30,7 @@ BAD = {
 
 
 def rules_by_file(folder: Path, samples: Path) -> dict[str, set[str]]:
-    result = run(folder, load_config(samples / "assetlint.toml"))
+    result = run(folder, load_config(samples / "assetlint.toml"), root=samples, display_root=folder)
     found: dict[str, set[str]] = defaultdict(set)
     for finding in result.findings:
         found[finding.path].add(finding.rule)

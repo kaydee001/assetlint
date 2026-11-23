@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from assetlint.config import Config
 from assetlint.rules.base import Rule
 from assetlint.rules.duplicates import DuplicatesRule
 from assetlint.rules.formats import FormatsRule
@@ -26,14 +25,9 @@ BUILTIN_RULES: list[type[Rule[Any]]] = [
 ]
 
 
-def build_rules(config: Config) -> list[Rule[Any]]:
-    """Instantiate every rule that isn't switched off."""
-    rules: list[Rule[Any]] = []
-    for rule_cls in BUILTIN_RULES:
-        rule_config = getattr(config.rules, rule_cls.id)
-        if rule_config.severity != "off":
-            rules.append(rule_cls(rule_config))
-    return rules
+def build_rules() -> list[Rule[Any]]:
+    """A fresh instance of every rule, for one run. Rules switched off are skipped per asset."""
+    return [rule_cls() for rule_cls in BUILTIN_RULES]
 
 
 __all__ = ["BUILTIN_RULES", "Rule", "build_rules"]

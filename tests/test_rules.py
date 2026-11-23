@@ -36,15 +36,17 @@ def write(root: Path, rel: str, content: str | bytes) -> Asset:
     return Asset(path=path, rel=rel)
 
 
-def check(rule: Rule[Any], asset: Asset) -> list[str]:
-    return list(rule.check(asset))
+def check(bound: tuple[Rule[Any], Any], asset: Asset) -> list[str]:
+    """Run one rule, given as (rule, its settings), on one asset."""
+    rule, config = bound
+    return list(rule.check(asset, config))
 
 
 # --- formats ----------------------------------------------------------------
 
 
 class TestFormats:
-    rule = FormatsRule(FormatsRuleConfig())
+    rule = (FormatsRule(), FormatsRuleConfig())
 
     def test_valid_files_pass(self, tmp_path: Path) -> None:
         doc, data = gltf_doc(3)
@@ -55,7 +57,7 @@ class TestFormats:
         assert check(self.rule, write(tmp_path, "a.exr", b"\x76\x2f\x31\x01rest")) == []
 
     def test_type_not_allowed(self, tmp_path: Path) -> None:
-        rule = FormatsRule(FormatsRuleConfig(allowed=["glb", ".PNG"]))
+        rule = (FormatsRule(), FormatsRuleConfig(allowed=["glb", ".PNG"]))
         assert check(rule, write(tmp_path, "a.png", image_bytes(4, 4))) == []
         [message] = check(rule, write(tmp_path, "a.fbx", b"x"))
         assert message == ".fbx files aren't allowed (allowed: .glb, .png)"
@@ -107,7 +109,7 @@ class TestFormats:
 def test_only_formats_reports_an_unreadable_file(tmp_path: Path) -> None:
     write(tmp_path, "SM_A.glb", b"garbage")
     write(tmp_path, "T_A.png", b"other garbage")
-    result = run(tmp_path, Config())
+    result = run(tmp_path, Config(), display_root=tmp_path)
     assert {(f.path, f.rule) for f in result.findings} == {
         ("SM_A.glb", "formats"),
         ("T_A.png", "formats"),
@@ -119,23 +121,26 @@ def test_only_formats_reports_an_unreadable_file(tmp_path: Path) -> None:
 
 class TestSize:
     def test_no_limit_by_default(self, tmp_path: Path) -> None:
-        assert check(SizeRule(SizeRuleConfig()), write(tmp_path, "a.png", b"x" * 10_000)) == []
+        assert check((SizeRule(), SizeRuleConfig()), write(tmp_path, "a.png", b"x" * 10_000)) == []
 
     def test_over_the_limit(self, tmp_path: Path) -> None:
-        rule = SizeRule(SizeRuleConfig.model_validate({"max": "1KB"}))
+        rule = (SizeRule(), SizeRuleConfig.model_validate({"max": "1KB"}))
         assert check(rule, write(tmp_path, "ok.png", b"x" * 1000)) == []
         assert check(rule, write(tmp_path, "big.png", b"x" * 1500)) == [
             "1.5 KB, over the 1 KB limit"
         ]
 
     def test_rounding_never_hides_the_difference(self, tmp_path: Path) -> None:
-        rule = SizeRule(SizeRuleConfig.model_validate({"max": "1KB"}))
+        rule = (SizeRule(), SizeRuleConfig.model_validate({"max": "1KB"}))
         assert check(rule, write(tmp_path, "a.png", b"x" * 1040)) == [
             "1,040 bytes, over the 1,000-byte limit"
         ]
 
     def test_limit_by_type_overrides_max(self, tmp_path: Path) -> None:
-        rule = SizeRule(SizeRuleConfig.model_validate({"max": 100, "max_by_type": {"PNG": 2000}}))
+        rule = (
+            SizeRule(),
+            SizeRuleConfig.model_validate({"max": 100, "max_by_type": {"PNG": 2000}}),
+        )
         assert check(rule, write(tmp_path, "a.png", b"x" * 1500)) == []
         assert len(check(rule, write(tmp_path, "a.glb", b"x" * 1500))) == 1
 
@@ -152,9 +157,9 @@ class TestSize:
 
 class TestDuplicates:
     def findings(self, root: Path) -> list[tuple[str, str]]:
-        rule = DuplicatesRule(DuplicatesRuleConfig())
+        rule, config = DuplicatesRule(), DuplicatesRuleConfig()
         for asset in discover(root, Config()):
-            check(rule, asset)
+            list(rule.check(asset, config))
         return sorted((asset.rel, message) for asset, message in rule.finish())
 
     def test_copies_name_each_other(self, tmp_path: Path) -> None:
@@ -182,7 +187,7 @@ class TestDuplicates:
 
 
 class TestTriangles:
-    rule = TrianglesRule(TrianglesRuleConfig(max=10))
+    rule = (TrianglesRule(), TrianglesRuleConfig(max=10))
 
     def test_obj_within_and_over_budget(self, tmp_path: Path) -> None:
         assert check(self.rule, write(tmp_path, "a.obj", obj_text(10))) == []
@@ -192,7 +197,7 @@ class TestTriangles:
     def test_obj_polygons_count_as_n_minus_2(self, tmp_path: Path) -> None:
         # a quad (2), a pentagon (3) with v/vt/vn tokens, a line and a point (0): 5 in all
         text = "f 1 2 3 4\nf 1/1/1 2/2/2 3/3/3 4/4/4 5/5/5\nl 1 2\np 1\n"
-        rule = TrianglesRule(TrianglesRuleConfig(max=4))
+        rule = (TrianglesRule(), TrianglesRuleConfig(max=4))
         assert check(rule, write(tmp_path, "a.obj", text)) == ["5 triangles, over the budget of 4"]
 
     def test_obj_with_tabs_and_a_byte_order_mark(self, tmp_path: Path) -> None:
@@ -200,7 +205,7 @@ class TestTriangles:
         write(tmp_path, "a.mtl", "map_Kd\tmissing.png\n")
         asset = write(tmp_path, "a.obj", text)
         assert check(self.rule, asset) == ["11 triangles, over the budget of 10"]
-        assert check(ReferencesRule(ReferencesRuleConfig()), asset) == [
+        assert check((ReferencesRule(), ReferencesRuleConfig()), asset) == [
             "references 'missing.png' (in 'a.mtl'), which doesn't exist"
         ]
 
@@ -220,7 +225,7 @@ class TestTriangles:
         doc["accessors"][0]["count"] = count
         if mode is not None:
             doc["meshes"][0]["primitives"][0]["mode"] = mode
-        rule = TrianglesRule(TrianglesRuleConfig(max=1))
+        rule = (TrianglesRule(), TrianglesRuleConfig(max=1))
         messages = check(rule, write(tmp_path, "a.gltf", json.dumps(doc)))
         expected = [f"{triangles} triangles, over the budget of 1"] if triangles > 1 else []
         assert messages == expected
@@ -233,7 +238,7 @@ class TestTriangles:
         assert message.startswith("12 triangles")
 
     def test_no_budget_by_default(self, tmp_path: Path) -> None:
-        rule = TrianglesRule(TrianglesRuleConfig())
+        rule = (TrianglesRule(), TrianglesRuleConfig())
         assert check(rule, write(tmp_path, "a.obj", obj_text(5000))) == []
 
 
@@ -242,24 +247,24 @@ class TestTriangles:
 
 class TestTextures:
     def test_power_of_two(self, tmp_path: Path) -> None:
-        rule = TexturesRule(TexturesRuleConfig())
+        rule = (TexturesRule(), TexturesRuleConfig())
         assert check(rule, write(tmp_path, "a.png", image_bytes(256, 64))) == []
         assert check(rule, write(tmp_path, "b.png", image_bytes(1, 1))) == []
         [message] = check(rule, write(tmp_path, "c.png", image_bytes(256, 100)))
         assert message.startswith("256x100 isn't a power of two")
 
     def test_power_of_two_can_be_switched_off(self, tmp_path: Path) -> None:
-        rule = TexturesRule(TexturesRuleConfig(power_of_two=False))
+        rule = (TexturesRule(), TexturesRuleConfig(power_of_two=False))
         assert check(rule, write(tmp_path, "a.png", image_bytes(300, 100))) == []
 
     def test_max_size(self, tmp_path: Path) -> None:
-        rule = TexturesRule(TexturesRuleConfig(max_size=128))
+        rule = (TexturesRule(), TexturesRuleConfig(max_size=128))
         assert check(rule, write(tmp_path, "a.tga", image_bytes(128, 128, "TGA"))) == []
         [message] = check(rule, write(tmp_path, "b.jpg", image_bytes(64, 256, "JPEG")))
         assert message == "64x256, over the maximum of 128"
 
     def test_formats_pillow_cant_read_are_skipped(self, tmp_path: Path) -> None:
-        rule = TexturesRule(TexturesRuleConfig(max_size=1))
+        rule = (TexturesRule(), TexturesRuleConfig(max_size=1))
         assert check(rule, write(tmp_path, "a.exr", b"\x76\x2f\x31\x01")) == []
 
 
@@ -268,7 +273,7 @@ class TestTextures:
 
 class TestReferences:
     def refs(self, asset: Asset) -> list[str]:
-        return check(ReferencesRule(ReferencesRuleConfig()), asset)
+        return check((ReferencesRule(), ReferencesRuleConfig()), asset)
 
     def test_obj_with_its_mtl_and_textures_present(self, tmp_path: Path) -> None:
         # Texture paths are relative to the .mtl, not the .obj.

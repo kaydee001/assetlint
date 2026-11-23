@@ -16,18 +16,14 @@ class NamingRule(Rule[NamingRuleConfig]):
     id = "naming"
     description = "File names follow the naming pattern and the prefix for their type."
 
-    def __init__(self, config: NamingRuleConfig) -> None:
-        super().__init__(config)
-        self._pattern = re.compile(config.pattern)
-
-    def check(self, asset: Asset) -> Iterator[str]:
+    def check(self, asset: Asset, config: NamingRuleConfig) -> Iterator[str]:
         stem = asset.stem
 
-        prefix = self.config.prefixes.get(asset.ext)
+        prefix = config.prefixes.get(asset.ext)
         if prefix and not stem.startswith(prefix):
             yield f"'{asset.name}' should start with '{prefix}' ({asset.ext} files)"
 
-        if not self._pattern.fullmatch(stem):
+        if not re.fullmatch(config.pattern, stem):  # re caches compiled patterns
             yield f"'{asset.name}' doesn't match the naming pattern{_hint(stem)}"
 
 

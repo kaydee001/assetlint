@@ -46,7 +46,8 @@ def test_discover_a_single_file(tmp_path: Path) -> None:
 
 def test_run_reports_findings_with_rule_and_severity(tmp_path: Path) -> None:
     write_objs(tmp_path, "ok.obj", "Cube.001.obj")
-    result = run(tmp_path, Config(rules=RulesConfig(naming=NamingRuleConfig(severity="warn"))))
+    config = Config(rules=RulesConfig(naming=NamingRuleConfig(severity="warn")))
+    result = run(tmp_path, config, display_root=tmp_path)
     assert result.files_checked == 2
     [finding] = result.findings
     assert (finding.rule, finding.severity, finding.path) == ("naming", "warn", "Cube.001.obj")

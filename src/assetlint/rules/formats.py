@@ -30,8 +30,8 @@ class FormatsRule(Rule[FormatsRuleConfig]):
     id = "formats"
     description = "Only allowed file types, and no empty, corrupt or misnamed files."
 
-    def check(self, asset: Asset) -> Iterator[str]:
-        allowed = self.config.allowed
+    def check(self, asset: Asset, config: FormatsRuleConfig) -> Iterator[str]:
+        allowed = config.allowed
         if allowed is not None and asset.ext not in allowed:
             yield f"{asset.ext} files aren't allowed (allowed: {', '.join(allowed)})"
             return

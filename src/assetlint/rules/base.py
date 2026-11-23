@@ -18,19 +18,18 @@ class RuleConfig(Protocol):
 class Rule[C: RuleConfig](ABC):
     """A check run against each asset.
 
-    A rule yields plain messages; the engine attaches the rule id, severity
-    and path. Rules that compare files with each other (such as duplicates)
-    collect what they need in `check` and report it from `finish`.
+    One instance checks every asset in a run. Settings come with each asset,
+    because per-folder overrides can give assets different settings. A rule
+    yields plain messages; the engine attaches the rule id, severity and path.
+    Rules that compare files with each other (such as duplicates) collect what
+    they need in `check` and report it from `finish`.
     """
 
     id: ClassVar[str]
     description: ClassVar[str]
 
-    def __init__(self, config: C) -> None:
-        self.config = config
-
     @abstractmethod
-    def check(self, asset: Asset) -> Iterable[str]:
+    def check(self, asset: Asset, config: C) -> Iterable[str]:
         """Yield one message per problem found in `asset`."""
 
     def finish(self) -> Iterable[tuple[Asset, str]]:
