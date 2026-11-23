@@ -4,8 +4,8 @@ A linter for 3D asset folders that runs headless. Put the rules in `assetlint.to
 and run it from the terminal, in CI or as a pre-commit hook. It does for asset
 folders what ESLint does for code.
 
-> Pre-alpha. The core rules work; JSON and SARIF output, per-folder overrides,
-> the GitHub Action and the pre-commit hook are next.
+> Pre-alpha: not yet on PyPI. The GitHub Action and pre-commit hook below install
+> it straight from this repository.
 
 ## Rules
 
@@ -55,8 +55,9 @@ rule is on, but budgets (size, triangles, texture size) stay off until you set t
 # Only these file types are checked (the defaults cover common mesh and texture formats).
 extensions = [".glb", ".gltf", ".obj", ".png", ".jpg", ".tga"]
 
-# Paths to skip, as globs relative to the checked folder.
-exclude = ["build/*", "*_backup.*"]
+# Paths to skip. Paths are relative to this file's folder, `*` matches across
+# folders, and a pattern ending in `/` matches everything in that folder.
+exclude = ["build/", "*_backup.*"]
 
 # Every rule takes severity = "error", "warn" or "off".
 
@@ -86,6 +87,90 @@ severity = "error"
 ```
 
 Unknown keys are reported as errors, so a typo can't switch a rule off without you noticing.
+
+### Per-folder overrides
+
+Give some folders different settings with `[[overrides]]`. Each one applies on top
+of `[rules]` to the paths it matches, and when several match, the last one wins.
+Only the keys you set change; tables such as `prefixes` merge key by key.
+
+```toml
+[rules.triangles]
+max = 5000
+
+[[overrides]]
+paths = ["characters/"]
+rules.triangles.max = 50000
+
+[[overrides]]
+paths = ["legacy/"]
+rules.naming.severity = "off"
+```
+
+## Output
+
+`--format` picks the report and `--output FILE` writes it to a file instead of the terminal.
+
+| Format   | For |
+| -------- | --- |
+| `text`   | People (the default) |
+| `json`   | Scripts: every finding with its path, rule, severity and message |
+| `sarif`  | GitHub code scanning and other SARIF 2.1.0 tools |
+| `github` | GitHub Actions annotations on the files, plus a table of every finding in the job summary |
+
+## GitHub Action
+
+```yaml
+# .github/workflows/assets.yml
+name: Assets
+on: [push, pull_request]
+
+jobs:
+  assetlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true          # if your assets are in Git LFS
+      - uses: kaydee001/assetlint@main
+        with:
+          path: assets       # default: the whole repository
+```
+
+Problems show up as annotations on the run and on the pull request. GitHub shows
+the first 10 errors and 10 warnings of a step there; the job summary lists them all.
+
+For code scanning alerts as well (public repositories, or private ones with
+GitHub Advanced Security), write SARIF and upload it:
+
+```yaml
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kaydee001/assetlint@main
+        with:
+          sarif-file: assetlint.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: assetlint.sarif
+```
+
+## pre-commit
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/kaydee001/assetlint
+    rev: main
+    hooks:
+      - id: assetlint
+```
+
+The hook runs when an asset or `assetlint.toml` changes, and checks the whole
+repository, because duplicates and missing references need to see every file.
 
 ## Develop
 

@@ -35,3 +35,24 @@ jobs:
           uv run assetlint check samples/bad
           code=$?
           if [ "$code" -ne 1 ]; then echo "expected exit 1, got $code"; exit 1; fi
+
+  action:
+    name: GitHub Action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Good samples pass
+        uses: ./
+        with:
+          path: samples/good
+      - name: Bad samples fail (the annotations here are expected)
+        id: bad
+        uses: ./
+        continue-on-error: true
+        with:
+          path: samples/bad
+          sarif-file: assetlint.sarif
+      - name: Check the bad run failed and wrote SARIF
+        run: |
+          if [ "${{ steps.bad.outcome }}" != "failure" ]; then echo "expected the bad samples to fail"; exit 1; fi
+          python3 -c "import json; r = json.load(open('assetlint.sarif'))['runs'][0]['results']; assert len(r) == 17, len(r)"

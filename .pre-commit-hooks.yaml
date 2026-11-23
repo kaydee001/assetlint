@@ -1,0 +1,9 @@
+- id: assetlint
+  name: assetlint
+  description: Lint 3D asset files against assetlint.toml.
+  entry: assetlint check
+  language: python
+  # The whole folder is checked, not just the staged files: duplicates and
+  # missing references need to see every file. It runs when an asset or the config changes.
+  pass_filenames: false
+  files: (?i)(\.(gltf|glb|bin|obj|mtl|fbx|blend|usd|usda|usdc|usdz|png|jpe?g|tga|tiff?|exr|hdr|psd|dds|ktx2)|(^|/)assetlint\.toml)$

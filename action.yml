@@ -1,0 +1,43 @@
+name: assetlint
+description: Lint 3D asset folders (naming, budgets, formats, missing textures) and annotate pull requests.
+author: kaydee001
+branding:
+  icon: box
+  color: orange
+
+inputs:
+  path:
+    description: Folder or file to check, relative to the repository root.
+    default: "."
+  config:
+    description: "Config file. Default: the nearest assetlint.toml in `path` or its parents."
+    default: ""
+  sarif-file:
+    description: >
+      Also write a SARIF report to this file, for github/codeql-action/upload-sarif
+      (code scanning: public repositories, or private ones with GitHub Advanced Security).
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v6
+
+    - name: Run assetlint
+      shell: bash
+      # Inputs reach the script through env, never pasted into it, so a path can't inject commands.
+      env:
+        ASSETLINT_PATH: ${{ inputs.path }}
+        ASSETLINT_CONFIG: ${{ inputs.config }}
+        ASSETLINT_SARIF: ${{ inputs.sarif-file }}
+        ASSETLINT_SOURCE: ${{ github.action_path }}
+      run: |
+        assetlint() { uvx --python 3.12 --from "$ASSETLINT_SOURCE" assetlint "$@"; }
+        args=(check "$ASSETLINT_PATH")
+        if [ -n "$ASSETLINT_CONFIG" ]; then args+=(--config "$ASSETLINT_CONFIG"); fi
+
+        if [ -n "$ASSETLINT_SARIF" ]; then
+          # Exit 1 just means problems were found; the run below reports them and fails the step.
+          assetlint "${args[@]}" --format sarif --output "$ASSETLINT_SARIF" || true
+        fi
+        assetlint "${args[@]}" --format github
