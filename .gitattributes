@@ -1,0 +1,7 @@
+# Sample assets are fixtures: their exact bytes matter (sizes, hashes), so git
+# must never convert their line endings on checkout.
+samples/** -text
+*.png binary
+*.jpg binary
+*.glb binary
+*.bin binary

@@ -1,0 +1,38 @@
+"""The interface every rule implements."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from collections.abc import Iterable
+from typing import ClassVar, Protocol
+
+from assetlint.config import Severity
+from assetlint.model import Asset
+
+
+class RuleConfig(Protocol):
+    @property
+    def severity(self) -> Severity: ...
+
+
+class Rule[C: RuleConfig](ABC):
+    """A check run against each asset.
+
+    A rule yields plain messages; the engine attaches the rule id, severity
+    and path. Rules that compare files with each other (such as duplicates)
+    collect what they need in `check` and report it from `finish`.
+    """
+
+    id: ClassVar[str]
+    description: ClassVar[str]
+
+    def __init__(self, config: C) -> None:
+        self.config = config
+
+    @abstractmethod
+    def check(self, asset: Asset) -> Iterable[str]:
+        """Yield one message per problem found in `asset`."""
+
+    def finish(self) -> Iterable[tuple[Asset, str]]:
+        """Yield problems that need every asset seen first. Called once, after all checks."""
+        return ()

@@ -1,0 +1,1 @@
+Not an asset type, so assetlint skips this file.

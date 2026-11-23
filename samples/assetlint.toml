@@ -1,0 +1,30 @@
+# Shared config for both sample folders. `assetlint check samples/good` passes;
+# `assetlint check samples/bad` fails, with each file breaking one rule.
+# Rebuild the samples with `uv run python tests/make_samples.py`.
+
+[rules.formats]
+allowed = [".obj", ".glb", ".gltf", ".png", ".jpg"]
+
+[rules.size]
+max = "64KB"
+
+[rules.naming]
+pattern = "[A-Z]{1,2}_[A-Za-z0-9]+(_[A-Za-z0-9]+)*"
+
+[rules.naming.prefixes]
+".obj" = "SM_"
+".glb" = "SM_"
+".gltf" = "SM_"
+".png" = "T_"
+".jpg" = "T_"
+
+[rules.duplicates]
+severity = "error"
+
+[rules.triangles]
+max = 500
+
+[rules.textures]
+severity = "error"
+power_of_two = true
+max_size = 1024

@@ -1,0 +1,204 @@
+"""The assetlint.toml schema, and how a config file is found and loaded."""
+
+from __future__ import annotations
+
+import re
+import tomllib
+from pathlib import Path
+from typing import Annotated, Literal
+
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    ValidationError,
+    field_validator,
+)
+
+CONFIG_FILENAME = "assetlint.toml"
+
+Severity = Literal["error", "warn", "off"]
+
+# File types checked when the config doesn't say otherwise.
+DEFAULT_EXTENSIONS: list[str] = [
+    # meshes and scenes
+    ".gltf", ".glb", ".obj", ".fbx", ".blend", ".usd", ".usda", ".usdc", ".usdz",
+    # textures
+    ".png", ".jpg", ".jpeg", ".tga", ".tif", ".tiff", ".exr", ".hdr", ".psd", ".dds", ".ktx2",
+]  # fmt: skip
+
+
+class ConfigError(Exception):
+    """The config file is missing, unreadable or invalid."""
+
+
+def _normalize_extension(ext: str) -> str:
+    ext = ext.strip().lower()
+    if not ext:
+        raise ValueError("empty extension")
+    return ext if ext.startswith(".") else f".{ext}"
+
+
+class _Strict(BaseModel):
+    # Unknown keys are errors, so a typo like `serverity` is caught instead of ignored.
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class NamingRuleConfig(_Strict):
+    severity: Severity = "error"
+    # The whole file name without its extension must match. The default
+    # rejects spaces and Blender's `.001` duplicate suffixes.
+    pattern: str = r"[A-Za-z0-9_\-]+"
+    # Required prefix by extension, e.g. {".glb" = "SM_", ".png" = "T_"}.
+    prefixes: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("pattern")
+    @classmethod
+    def _pattern_compiles(cls, value: str) -> str:
+        try:
+            re.compile(value)
+        except re.error as exc:
+            raise ValueError(f"not a valid regular expression: {exc}") from exc
+        return value
+
+    @field_validator("prefixes")
+    @classmethod
+    def _normalize_prefix_keys(cls, value: dict[str, str]) -> dict[str, str]:
+        return {_normalize_extension(ext): prefix for ext, prefix in value.items()}
+
+
+_SIZE = re.compile(r"(\d+(?:\.\d+)?)\s*([kmgt]i?b|b)?", re.IGNORECASE)
+_SIZE_UNITS = {
+    "b": 1,
+    "kb": 10**3, "mb": 10**6, "gb": 10**9, "tb": 10**12,
+    "kib": 2**10, "mib": 2**20, "gib": 2**30, "tib": 2**40,
+}  # fmt: skip
+
+
+def parse_size(value: object) -> int:
+    """Bytes from a number or a string such as "50MB" (10^6) or "2MiB" (2^20)."""
+    if isinstance(value, int) and not isinstance(value, bool):
+        size = value
+    elif isinstance(value, str) and (match := _SIZE.fullmatch(value.strip())):
+        number, unit = match.groups()
+        size = int(float(number) * _SIZE_UNITS[(unit or "b").lower()])
+    else:
+        raise ValueError('expected a number of bytes or a size such as "50MB" or "2MiB"')
+    if size <= 0:
+        raise ValueError("must be greater than zero")
+    return size
+
+
+# A size in bytes. KB, MB and GB are powers of 1000; KiB, MiB and GiB are powers of 1024.
+ByteSize = Annotated[int, BeforeValidator(parse_size)]
+
+
+class FormatsRuleConfig(_Strict):
+    severity: Severity = "error"
+    # File types allowed in the folder. Default: every checked type. Files are
+    # also checked to be what their extension says, and not empty or corrupt.
+    allowed: list[str] | None = None
+
+    @field_validator("allowed")
+    @classmethod
+    def _normalize_allowed(cls, value: list[str] | None) -> list[str] | None:
+        return None if value is None else sorted({_normalize_extension(e) for e in value})
+
+
+class SizeRuleConfig(_Strict):
+    severity: Severity = "error"
+    # Largest file allowed. No limit unless set.
+    max: ByteSize | None = None
+    # Limit by extension, overriding `max`, e.g. {".png" = "8MB"}.
+    max_by_type: dict[str, ByteSize] = Field(default_factory=dict)
+
+    @field_validator("max_by_type")
+    @classmethod
+    def _normalize_keys(cls, value: dict[str, int]) -> dict[str, int]:
+        return {_normalize_extension(ext): size for ext, size in value.items()}
+
+
+class DuplicatesRuleConfig(_Strict):
+    severity: Severity = "warn"
+
+
+class TrianglesRuleConfig(_Strict):
+    severity: Severity = "error"
+    # Most triangles allowed in one mesh file (glTF/GLB and OBJ). No limit unless set.
+    max: PositiveInt | None = None
+
+
+class TexturesRuleConfig(_Strict):
+    severity: Severity = "warn"
+    # Width and height must each be a power of two (1, 2, 4 ... 4096).
+    power_of_two: bool = True
+    # Largest width or height allowed, in pixels. No limit unless set.
+    max_size: PositiveInt | None = None
+
+
+class ReferencesRuleConfig(_Strict):
+    severity: Severity = "error"
+
+
+class RulesConfig(_Strict):
+    formats: FormatsRuleConfig = Field(default_factory=FormatsRuleConfig)
+    size: SizeRuleConfig = Field(default_factory=SizeRuleConfig)
+    naming: NamingRuleConfig = Field(default_factory=NamingRuleConfig)
+    duplicates: DuplicatesRuleConfig = Field(default_factory=DuplicatesRuleConfig)
+    triangles: TrianglesRuleConfig = Field(default_factory=TrianglesRuleConfig)
+    textures: TexturesRuleConfig = Field(default_factory=TexturesRuleConfig)
+    references: ReferencesRuleConfig = Field(default_factory=ReferencesRuleConfig)
+
+
+class Config(_Strict):
+    # Only files with these extensions are checked.
+    extensions: list[str] = Field(default_factory=lambda: list(DEFAULT_EXTENSIONS))
+    # Glob patterns, matched against paths relative to the checked folder,
+    # written with forward slashes (e.g. "build/*", "*_backup.*").
+    exclude: list[str] = Field(default_factory=list)
+    rules: RulesConfig = Field(default_factory=RulesConfig)
+
+    @field_validator("extensions")
+    @classmethod
+    def _normalize_extensions(cls, value: list[str]) -> list[str]:
+        return sorted({_normalize_extension(ext) for ext in value})
+
+
+def find_config(start: Path) -> Path | None:
+    """Return the nearest assetlint.toml in `start` or one of its parents."""
+    start = start.resolve()
+    directory = start if start.is_dir() else start.parent
+    for candidate_dir in (directory, *directory.parents):
+        candidate = candidate_dir / CONFIG_FILENAME
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def load_config(path: Path | None) -> Config:
+    """Load and validate a config file. With no path, return the defaults."""
+    if path is None:
+        return Config()
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise ConfigError(f"{path}: can't read file: {exc.strerror or exc}") from exc
+    except tomllib.TOMLDecodeError as exc:
+        raise ConfigError(f"{path}: invalid TOML: {exc}") from exc
+    try:
+        return Config.model_validate(data)
+    except ValidationError as exc:
+        raise ConfigError(_format_validation_error(path, exc)) from exc
+
+
+def _format_validation_error(path: Path, exc: ValidationError) -> str:
+    lines = [f"{path}: invalid config"]
+    for error in exc.errors():
+        location = ".".join(str(part) for part in error["loc"]) or "(top level)"
+        message = error["msg"]
+        if error["type"] == "extra_forbidden":
+            message = "unknown key"
+        lines.append(f"  {location}: {message}")
+    return "\n".join(lines)
