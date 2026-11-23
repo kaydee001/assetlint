@@ -72,6 +72,7 @@ async function check(folder) {
     state.query = "";
     render();
     loadRecent();
+    afterCheck(state.data.folder);
   } catch (error) {
     showError(error.message);
   } finally {

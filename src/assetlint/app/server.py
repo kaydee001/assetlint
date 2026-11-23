@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import secrets
+from collections.abc import Callable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
@@ -17,7 +18,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from assetlint.app import api
+from assetlint.app import api, editor
 
 _STATIC = files("assetlint.app") / "static"
 _CONTENT_TYPES = {
@@ -85,9 +86,12 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError as exc:
             return self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
 
-        routes = {
-            "/api/check": lambda: api.check(str(body.get("folder", ""))),
+        folder = str(body.get("folder", ""))
+        routes: dict[str, Callable[[], dict[str, Any]]] = {
+            "/api/check": lambda: api.check(folder),
             "/api/browse": api.browse,
+            "/api/settings": lambda: editor.load_settings(folder),
+            "/api/settings/save": lambda: editor.save_settings(folder, body.get("changes") or {}),
         }
         handler = routes.get(urlsplit(self.path).path)
         if handler is None:

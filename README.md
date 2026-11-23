@@ -62,6 +62,10 @@ of its parents, or `--config <file>`. With no config it uses the defaults: every
 rule is on, but budgets (size, triangles, texture size) stay off until you set them.
 
 ```toml
+# Start from an engine's conventions: "unreal", "unity" or "godot". Optional;
+# anything set below wins over the preset.
+preset = "unreal"
+
 # Only these file types are checked (the defaults cover common mesh and texture formats).
 extensions = [".glb", ".gltf", ".obj", ".png", ".jpg", ".tga"]
 

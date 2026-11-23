@@ -21,7 +21,18 @@
         <button type="button" id="browse" class="secondary" hidden>Browse…</button>
         <button type="submit" id="check">Check</button>
       </form>
+      <nav class="tabs" id="tabs" aria-label="View" hidden>
+        <button type="button" data-view="problems" aria-pressed="true">Problems</button>
+        <button type="button" data-view="rules" aria-pressed="false">Rules</button>
+      </nav>
     </header>
+
+    <main class="rules-page" id="rules-page" hidden></main>
+    <div class="savebar" id="savebar" hidden>
+      <span id="savebar-text">Unsaved changes</span>
+      <button type="button" class="secondary" id="discard">Discard</button>
+      <button type="button" id="save">Save and check</button>
+    </div>
 
     <main class="layout">
       <aside class="sidebar" id="sidebar" hidden>
@@ -48,5 +59,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
     <script src="/static/app.js"></script>
+    <script src="/static/rules.js"></script>
   </body>
 </html>

@@ -27,7 +27,7 @@ class ApiError(Exception):
 
 def check(folder: str) -> dict[str, Any]:
     """Check a folder with its assetlint.toml (or the defaults) and return the results."""
-    target = _existing_folder(folder)
+    target = existing_folder(folder)
     config_path = find_config(target)
     try:
         config = load_config(config_path)
@@ -111,7 +111,7 @@ def remember(folder: Path) -> None:
 # --- helpers --------------------------------------------------------------------
 
 
-def _existing_folder(folder: str) -> Path:
+def existing_folder(folder: str) -> Path:
     if not folder.strip():
         raise ApiError("Choose a folder to check.")
     path = Path(folder.strip().strip('"')).expanduser()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import re
 import tomllib
 from fnmatch import fnmatchcase
@@ -17,9 +18,14 @@ from pydantic import (
     PrivateAttr,
     ValidationError,
     field_validator,
+    model_validator,
 )
 
+from assetlint.presets import PRESETS
+
 CONFIG_FILENAME = "assetlint.toml"
+
+PresetName = Literal["unreal", "unity", "godot"]
 
 Severity = Literal["error", "warn", "off"]
 
@@ -164,6 +170,8 @@ class Override(_Strict):
 
 
 class Config(_Strict):
+    # A ready-made rule set ("unreal", "unity", "godot") that [rules] builds on.
+    preset: PresetName | None = None
     # Only files with these extensions are checked.
     extensions: list[str] = Field(default_factory=lambda: list(DEFAULT_EXTENSIONS))
     # Path patterns to skip. Paths are relative to the config file's folder (or
@@ -196,6 +204,20 @@ class Config(_Strict):
     @classmethod
     def _normalize_extensions(cls, value: list[str]) -> list[str]:
         return sorted({_normalize_extension(ext) for ext in value})
+
+    @model_validator(mode="before")
+    @classmethod
+    def _apply_preset(cls, data: Any) -> Any:
+        """Put the preset's settings under [rules], so anything in [rules] wins."""
+        if not isinstance(data, dict) or data.get("preset") not in PRESETS:
+            return data  # an unknown preset name is reported by the `preset` field
+        rules = copy.deepcopy(PRESETS[data["preset"]]["rules"])
+        own = data.get("rules", {})
+        if isinstance(own, RulesConfig):
+            own = own.model_dump(exclude_unset=True)
+        if isinstance(own, dict):
+            _deep_merge(rules, copy.deepcopy(own))
+        return {**data, "rules": rules}
 
 
 def path_matches(rel: str, pattern: str) -> bool:
@@ -237,10 +259,10 @@ def load_config(path: Path | None) -> Config:
     try:
         return Config.model_validate(data)
     except ValidationError as exc:
-        raise ConfigError(_format_validation_error(path, exc)) from exc
+        raise ConfigError(format_validation_error(path, exc)) from exc
 
 
-def _format_validation_error(path: Path, exc: ValidationError) -> str:
+def format_validation_error(path: Path, exc: ValidationError) -> str:
     lines = [f"{path}: invalid config"]
     for error in exc.errors():
         location = ".".join(str(part) for part in error["loc"]) or "(top level)"
