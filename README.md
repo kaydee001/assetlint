@@ -129,7 +129,7 @@ jobs:
   assetlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           lfs: true          # if your assets are in Git LFS
       - uses: kaydee001/assetlint@main
@@ -141,18 +141,20 @@ Problems show up as annotations on the run and on the pull request. GitHub shows
 the first 10 errors and 10 warnings of a step there; the job summary lists them all.
 
 For code scanning alerts as well (public repositories, or private ones with
-GitHub Advanced Security), write SARIF and upload it:
+GitHub Advanced Security), write SARIF and upload it. Code scanning only keeps
+alerts for text files (`.obj`, `.gltf`), not binary ones (`.png`, `.glb`), so
+keep the annotations as the main report:
 
 ```yaml
     permissions:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: kaydee001/assetlint@main
         with:
           sarif-file: assetlint.sarif
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: assetlint.sarif
