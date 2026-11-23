@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Asset Lint</title>
+    <link rel="icon" href="/static/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="/static/icon.svg" alt="" width="20" height="20" />
+        <span>Asset Lint</span>
+      </div>
+      <form class="folder" id="folder-form" autocomplete="off">
+        <label class="visually-hidden" for="folder">Asset folder</label>
+        <input id="folder" name="folder" list="recent" spellcheck="false"
+               placeholder="Paste a folder path, e.g. D:\game\assets" />
+        <datalist id="recent"></datalist>
+        <button type="button" id="browse" class="secondary" hidden>Browse…</button>
+        <button type="submit" id="check">Check</button>
+      </form>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar" id="sidebar" hidden>
+        <section class="summary" id="summary"></section>
+        <section>
+          <h2>Severity</h2>
+          <div class="toggles" id="severity-filters"></div>
+        </section>
+        <section>
+          <h2>Rules</h2>
+          <ul class="rule-list" id="rule-filters"></ul>
+        </section>
+        <p class="config" id="config"></p>
+      </aside>
+
+      <section class="results" id="results">
+        <div class="empty" id="welcome">
+          <h1>Check an asset folder</h1>
+          <p>Paste a folder path above, or pick one you checked before.</p>
+          <ul class="recent-list" id="recent-list"></ul>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

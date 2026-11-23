@@ -7,6 +7,16 @@ folders what ESLint does for code.
 > Pre-alpha: not yet on PyPI. The GitHub Action and pre-commit hook below install
 > it straight from this repository.
 
+## The app
+
+```sh
+assetlint app            # or: assetlint app path/to/assets
+```
+
+Opens Asset Lint in your browser: pick a folder, see every problem grouped by
+file, and filter by rule or severity. It runs on your machine only and uses the
+same `assetlint.toml` as the command line and CI, so all three agree.
+
 ## Rules
 
 | Rule         | Checks                                                                 | Default |
