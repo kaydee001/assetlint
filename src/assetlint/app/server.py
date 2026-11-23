@@ -37,6 +37,20 @@ class AppServer(ThreadingHTTPServer):
         super().__init__(("127.0.0.1", port), Handler)
         self.token = secrets.token_urlsafe(24)
         self.start_folder = start_folder
+        self.window: Any = None  # the pywebview window, when the app runs in one
+
+    def pick_folder(self) -> dict[str, Any]:
+        """The OS folder picker: pywebview's in the app window, else a separate Tk process."""
+        if self.window is None:
+            return api.browse()
+        import webview
+
+        chosen = self.window.create_file_dialog(webview.FileDialog.FOLDER)
+        return {"folder": str(Path(chosen[0])) if chosen else None}
+
+    @property
+    def can_browse(self) -> bool:
+        return self.window is not None or api.tk_available()
 
     @property
     def port(self) -> int:
@@ -71,7 +85,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/info":
             if not self._token_ok():
                 return self._send_error(HTTPStatus.FORBIDDEN, "Missing or wrong token.")
-            return self._send_json(api.info(self.server.start_folder))
+            return self._send_json(api.info(self.server.start_folder, self.server.can_browse))
         self._send_error(HTTPStatus.NOT_FOUND, "Not found.")
 
     def do_POST(self) -> None:
@@ -89,7 +103,7 @@ class Handler(BaseHTTPRequestHandler):
         folder = str(body.get("folder", ""))
         routes: dict[str, Callable[[], dict[str, Any]]] = {
             "/api/check": lambda: api.check(folder),
-            "/api/browse": api.browse,
+            "/api/browse": self.server.pick_folder,
             "/api/settings": lambda: editor.load_settings(folder),
             "/api/settings/save": lambda: editor.save_settings(folder, body.get("changes") or {}),
         }

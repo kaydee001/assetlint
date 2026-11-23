@@ -59,12 +59,12 @@ def check(folder: str) -> dict[str, Any]:
     }
 
 
-def info(start_folder: Path | None) -> dict[str, Any]:
+def info(start_folder: Path | None, can_browse: bool) -> dict[str, Any]:
     return {
         "version": __version__,
         "start_folder": str(start_folder) if start_folder else None,
         "recent": recent(),
-        "can_browse": _tk_available(),
+        "can_browse": can_browse,
     }
 
 
@@ -122,7 +122,7 @@ def existing_folder(folder: str) -> Path:
     return path.resolve()
 
 
-def _tk_available() -> bool:
+def tk_available() -> bool:
     try:
         import tkinter  # noqa: F401
     except ImportError:

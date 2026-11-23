@@ -10,12 +10,18 @@ folders what ESLint does for code.
 ## The app
 
 ```sh
+pip install "assetlint[app]"
 assetlint app            # or: assetlint app path/to/assets
 ```
 
-Opens Asset Lint in your browser: pick a folder, see every problem grouped by
-file, and filter by rule or severity. It runs on your machine only and uses the
-same `assetlint.toml` as the command line and CI, so all three agree.
+Opens Asset Lint in its own window: pick a folder, see every problem grouped by
+file, filter by rule or severity, and change the rules (or start from an Unreal,
+Unity or Godot preset) without editing any files by hand. It uses the same
+`assetlint.toml` as the command line and CI, so all three agree.
+
+The window uses the web view your OS already has (Edge WebView2 on Windows,
+WebKit on macOS), so it stays small. Without the `app` extra, or with
+`--browser`, the same screens open in your browser instead.
 
 ## Rules
 

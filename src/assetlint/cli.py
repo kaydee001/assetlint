@@ -142,12 +142,18 @@ def app_command(
         Path | None,
         typer.Argument(exists=True, file_okay=False, help="Folder to check when the app opens."),
     ] = None,
-    port: Annotated[int, typer.Option(help="Port to use. Default: any free port.")] = 0,
-    no_browser: Annotated[
-        bool, typer.Option("--no-browser", help="Don't open the app in a browser.")
+    browser: Annotated[
+        bool, typer.Option("--browser", help="Open in your web browser instead of an app window.")
     ] = False,
+    no_window: Annotated[
+        bool, typer.Option("--no-window", help="Only run the app's local server (for testing).")
+    ] = False,
+    port: Annotated[
+        int, typer.Option(help="Port for the local server. Default: any free one.")
+    ] = 0,
 ) -> None:
-    """Open the Asset Lint app in your browser."""
-    from assetlint.app import serve  # the server isn't needed for `check`
+    """Open the Asset Lint app."""
+    from assetlint.app import Mode, serve  # the app isn't needed for `check`
 
-    serve(start_folder=folder.resolve() if folder else None, port=port, open_browser=not no_browser)
+    mode: Mode = "none" if no_window else "browser" if browser else "window"
+    serve(start_folder=folder.resolve() if folder else None, port=port, mode=mode)

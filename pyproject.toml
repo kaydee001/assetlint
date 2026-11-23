@@ -29,6 +29,11 @@ dependencies = [
 [project.scripts]
 assetlint = "assetlint.cli:app"
 
+[project.optional-dependencies]
+app = [
+    "pywebview>=5.0",
+]
+
 [dependency-groups]
 dev = [
     "mypy>=1.11",
