@@ -1,0 +1,26 @@
+name: Assets (demo)
+
+# Lives only on the demo/broken-assets branch: open a pull request from it to see
+# how assetlint reports problems. Never merge that pull request.
+on:
+  pull_request:
+    paths: ["demo/**", ".github/workflows/assets-demo.yml"]
+
+permissions:
+  contents: read
+  security-events: write # to upload SARIF for code scanning
+
+jobs:
+  assetlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          path: demo
+          sarif-file: assetlint.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: assetlint.sarif
+          category: assetlint

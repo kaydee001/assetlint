@@ -1,0 +1,18 @@
+# A demo project: Unreal-style names, a triangle budget, and a bigger one for characters.
+
+[rules.naming]
+pattern = "[A-Z]{1,2}_[A-Za-z0-9]+(_[A-Za-z0-9]+)*"
+prefixes = { ".obj" = "SM_", ".glb" = "SM_", ".png" = "T_" }
+
+[rules.duplicates]
+severity = "error"
+
+[rules.triangles]
+max = 2000
+
+[rules.textures]
+max_size = 2048
+
+[[overrides]]
+paths = ["characters/"]
+rules.triangles.max = 10000
