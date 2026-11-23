@@ -21,6 +21,9 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
   color: var(--text);
   font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -72,7 +75,7 @@ button:focus-visible, input:focus-visible, .rule-list button:focus-visible { out
 
 /* --- layout ----------------------------------------------------------- */
 
-.layout { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 53px); }
+.layout { display: grid; grid-template-columns: 260px 1fr; flex: 1; }
 .layout:has(.sidebar[hidden]) { grid-template-columns: 1fr; }
 
 .sidebar {
@@ -204,7 +207,7 @@ button:focus-visible, input:focus-visible, .rule-list button:focus-visible { out
 
 /* --- rules page ------------------------------------------------------- */
 
-.rules-page { max-width: 1040px; margin: 0 auto; padding: 24px 28px 120px; }
+.rules-page { width: 100%; max-width: 1040px; margin: 0 auto; padding: 24px 28px 120px; }
 .rules-page > header { margin-bottom: 20px; }
 .rules-page h1 { font-size: 20px; }
 .rules-page .where { color: var(--muted); margin-top: 4px; }
