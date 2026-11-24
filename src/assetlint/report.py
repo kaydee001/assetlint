@@ -17,8 +17,7 @@ from rich.console import Console
 from rich.markup import escape
 
 from assetlint import __version__
-from assetlint.config import RulesConfig
-from assetlint.model import Finding, Result
+from assetlint.model import Finding, Result, RuleInfo
 from assetlint.rules import BUILTIN_RULES
 
 HOMEPAGE = "https://github.com/kaydee001/assetlint"
@@ -83,19 +82,17 @@ def to_json(result: Result) -> str:
 
 def to_sarif(result: Result) -> str:
     """SARIF 2.1.0, as GitHub code scanning reads it."""
-    defaults = RulesConfig()
-    rule_ids = [rule.id for rule in BUILTIN_RULES]
+    infos = result.rules or _builtin_rules()
+    rule_ids = [rule.id for rule in infos]
     rules = [
         {
             "id": rule.id,
             "name": rule.id,
             "shortDescription": {"text": rule.description},
-            "helpUri": f"{HOMEPAGE}#rules",
-            "defaultConfiguration": {
-                "level": _SARIF_LEVEL.get(getattr(defaults, rule.id).severity, "none")
-            },
+            "helpUri": f"{HOMEPAGE}#{'custom-rules' if rule.custom else 'rules'}",
+            "defaultConfiguration": {"level": _SARIF_LEVEL.get(rule.default_severity, "none")},
         }
-        for rule in BUILTIN_RULES
+        for rule in infos
     ]
     log = {
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
@@ -115,6 +112,13 @@ def to_sarif(result: Result) -> str:
         ],
     }
     return json.dumps(log, indent=2) + "\n"
+
+
+def _builtin_rules() -> list[RuleInfo]:
+    """For a Result built without the engine (tests, tools): the built-in rules."""
+    from assetlint.engine import rule_info
+
+    return [rule_info(rule_cls()) for rule_cls in BUILTIN_RULES]
 
 
 def _sarif_result(finding: Finding, rule_index: int) -> dict[str, Any]:

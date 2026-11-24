@@ -134,6 +134,48 @@ paths = ["legacy/"]
 rules.naming.severity = "off"
 ```
 
+### Custom rules
+
+Add rules for your own workflow with `[[custom]]`, in the file or from the app's
+Rules page. Each one picks files with `paths` (patterns as in `exclude`) and
+`types`, then sets what those files must be. A file gets one problem for each
+requirement it misses, reported under the rule's `id`.
+
+```toml
+[[custom]]
+id = "hero-textures"
+description = "Hero textures are square and at most 4K"
+severity = "warn"                 # error (default), warn or off
+paths = ["characters/hero/"]
+types = [".png", ".tga"]
+square = true
+max_texture_size = 4096
+
+[[custom]]
+id = "mesh-has-texture"
+types = [".fbx", ".glb"]
+requires = ["T_{base}_D.png"]     # SM_Crate.fbx needs T_Crate_D.png next to it
+
+[[custom]]
+id = "no-psd-in-export"
+paths = ["export/"]
+types = [".psd"]
+forbidden = true
+```
+
+| Requirement | The file must |
+| --- | --- |
+| `forbidden = true` | not be there at all |
+| `name_pattern` | have a name (without extension) that matches this regular expression |
+| `max_size` | be at most this size, e.g. `"8MB"` |
+| `min_triangles`, `max_triangles` | have a triangle count in this range (glTF/GLB and OBJ) |
+| `min_texture_size`, `max_texture_size` | have each side within this many pixels |
+| `square = true` | be a square texture |
+| `requires` | have these files next to it: `{stem}` is its name without extension, `{base}` the same without its naming prefix |
+
+Requirements that don't fit a file type, such as triangles on a PNG, are skipped
+for that file.
+
 ## Output
 
 `--format` picks the report and `--output FILE` writes it to a file instead of the terminal.

@@ -72,10 +72,21 @@ class Finding:
     message: str
 
 
+@dataclass(frozen=True)
+class RuleInfo:
+    """A rule that ran, for reports that list rules (SARIF) and the app."""
+
+    id: str
+    description: str
+    default_severity: str  # "error", "warn" or "off"
+    custom: bool = False
+
+
 @dataclass
 class Result:
     files_checked: int = 0
     findings: list[Finding] = field(default_factory=list)
+    rules: list[RuleInfo] = field(default_factory=list)  # the engine fills it
 
     @property
     def errors(self) -> int:

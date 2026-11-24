@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import ClassVar, Protocol
+from typing import Protocol
 
-from assetlint.config import Severity
+from assetlint.config import RulesConfig, Severity
 from assetlint.model import Asset
 
 
@@ -25,8 +25,13 @@ class Rule[C: RuleConfig](ABC):
     they need in `check` and report it from `finish`.
     """
 
-    id: ClassVar[str]
-    description: ClassVar[str]
+    id: str
+    description: str
+
+    def settings(self, rules: RulesConfig, asset: Asset) -> C | None:
+        """This rule's settings for `asset`, or None when the rule doesn't cover it."""
+        config: C = getattr(rules, self.id)
+        return config
 
     @abstractmethod
     def check(self, asset: Asset, config: C) -> Iterable[str]:

@@ -92,6 +92,28 @@ FIELDS: dict[str, list[dict[str, str]]] = {
     "references": [],
 }
 
+# A custom rule's settings, in the order they're written to the file.
+CUSTOM_FIELDS: list[dict[str, str]] = [
+    {"key": "paths", "kind": "lines", "label": "Folders or files",
+     "help": "One pattern per line, e.g. characters/ or props/*_LOD0.*  Empty: everywhere."},
+    {"key": "types", "kind": "extensions", "label": "File types", "help": "Empty: every type."},
+    {"key": "forbidden", "kind": "bool", "label": "Not allowed here at all"},
+    {"key": "name_pattern", "kind": "text", "label": "Name pattern",
+     "help": "A regular expression the whole name (without extension) must match."},
+    {"key": "max_size", "kind": "size", "label": "Largest file", "help": "e.g. 8MB"},
+    {"key": "min_triangles", "kind": "int", "label": "Fewest triangles"},
+    {"key": "max_triangles", "kind": "int", "label": "Most triangles"},
+    {"key": "min_texture_size", "kind": "int", "label": "Smallest texture side",
+     "help": "In pixels."},
+    {"key": "max_texture_size", "kind": "int", "label": "Largest texture side",
+     "help": "In pixels."},
+    {"key": "square", "kind": "bool", "label": "Textures must be square"},
+    {"key": "requires", "kind": "lines", "label": "Files that must sit next to it",
+     "help": "One per line. {stem} is the name, {base} the name without its prefix: "
+             "T_{base}_D.png"},
+]  # fmt: skip
+_CUSTOM_ORDER = ["id", "description", "severity", *(f["key"] for f in CUSTOM_FIELDS)]
+
 NEW_FILE_HEADER = (
     "# Asset Lint settings. Edited with the Asset Lint app; safe to edit by hand too.\n"
     "# The command line, CI and the app all read this file.\n"
@@ -148,6 +170,8 @@ def load_settings(folder_text: str) -> dict[str, Any]:
         "rules": rules,
         "exclude": raw.get("exclude", []),
         "overrides": [_override_for_editor(o) for o in raw.get("overrides", [])],
+        "custom": [c for c in raw.get("custom", []) if isinstance(c, dict)],
+        "custom_fields": CUSTOM_FIELDS,
     }
 
 
@@ -194,6 +218,20 @@ def save_settings(folder_text: str, changes: dict[str, Any]) -> dict[str, Any]:
                 del doc["overrides"]
             if overrides:
                 doc["overrides"] = _array_of_tables(overrides)
+
+    if "custom" in changes:
+        custom = [_custom_for_toml(c) for c in changes["custom"] or []]
+        current = doc["custom"].unwrap() if "custom" in doc else []
+        if custom != current:  # rewriting unchanged rules would drop their comments
+            if "custom" in doc:
+                del doc["custom"]
+            if custom:
+                aot = tomlkit.aot()
+                for entry in custom:
+                    table = tomlkit.table()
+                    table.update(entry)
+                    aot.append(table)
+                doc["custom"] = aot
 
     text = tomlkit.dumps(doc)
     _validate(path, text)
@@ -246,6 +284,27 @@ def _override_for_toml(override: Any) -> dict[str, Any]:
         if isinstance(keys, dict)
     }
     return {"paths": paths, "rules": {r: keys for r, keys in rules.items() if keys}}
+
+
+def _custom_for_toml(entry: Any) -> dict[str, Any]:
+    """A custom rule as the editor sent it, without empty settings, in a stable key order."""
+    if not isinstance(entry, dict) or not str(entry.get("id", "")).strip():
+        raise ApiError("Each custom rule needs an id, such as hero-textures.")
+    kept = {}
+    for key in _CUSTOM_ORDER:
+        value = entry.get(key)
+        if isinstance(value, str):
+            value = value.strip()
+        if isinstance(value, list):
+            value = [v.strip() if isinstance(v, str) else v for v in value]
+            value = [v for v in value if v != ""]
+        if value is None or value == "" or value == [] or value is False:
+            continue
+        kept[key] = value
+    unknown = set(entry) - set(_CUSTOM_ORDER)
+    if unknown:
+        raise ApiError(f"Unknown custom rule setting: {sorted(unknown)[0]}")
+    return kept
 
 
 def _array_of_tables(items: list[dict[str, Any]]) -> AoT:

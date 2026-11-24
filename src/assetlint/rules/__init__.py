@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from assetlint.config import Config
 from assetlint.rules.base import Rule
+from assetlint.rules.custom import CustomRule
 from assetlint.rules.duplicates import DuplicatesRule
 from assetlint.rules.formats import FormatsRule
 from assetlint.rules.naming import NamingRule
@@ -25,9 +27,13 @@ BUILTIN_RULES: list[type[Rule[Any]]] = [
 ]
 
 
-def build_rules() -> list[Rule[Any]]:
-    """A fresh instance of every rule, for one run. Rules switched off are skipped per asset."""
-    return [rule_cls() for rule_cls in BUILTIN_RULES]
+def build_rules(config: Config | None = None) -> list[Rule[Any]]:
+    """A fresh instance of every rule for one run: the built-ins, then the config's custom rules.
+
+    Rules switched off are skipped per asset.
+    """
+    custom = [CustomRule(entry, config) for entry in config.custom] if config else []
+    return [*(rule_cls() for rule_cls in BUILTIN_RULES), *custom]
 
 
-__all__ = ["BUILTIN_RULES", "Rule", "build_rules"]
+__all__ = ["BUILTIN_RULES", "CustomRule", "Rule", "build_rules"]

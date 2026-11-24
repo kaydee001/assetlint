@@ -18,8 +18,8 @@ from pathlib import Path
 from typing import Any
 
 from assetlint.config import Config, RulesConfig, path_matches
-from assetlint.model import Asset, Finding, Result
-from assetlint.rules import build_rules
+from assetlint.model import Asset, Finding, Result, RuleInfo
+from assetlint.rules import CustomRule, build_rules
 from assetlint.rules.base import Rule
 
 
@@ -76,16 +76,18 @@ def run(
         for asset in discover(target, config, root)
     ]
     settings = {asset: config.rules_for(asset.rel) for asset in assets}
-    result = Result(files_checked=len(assets))
+    rules = build_rules(config)
+    result = Result(files_checked=len(assets), rules=[rule_info(rule) for rule in rules])
 
     def add(rule: Rule[Any], asset: Asset, message: str) -> None:
-        severity = _rule_config(settings[asset], rule).severity
-        result.findings.append(Finding(rule.id, severity, asset.display, message))
+        rule_config = rule.settings(settings[asset], asset)
+        if rule_config is not None:
+            result.findings.append(Finding(rule.id, rule_config.severity, asset.display, message))
 
-    for rule in build_rules():
+    for rule in rules:
         for asset in assets:
-            rule_config = _rule_config(settings[asset], rule)
-            if rule_config.severity == "off":
+            rule_config = rule.settings(settings[asset], asset)
+            if rule_config is None or rule_config.severity == "off":
                 continue
             for message in rule.check(asset, rule_config):
                 add(rule, asset, message)
@@ -96,5 +98,9 @@ def run(
     return result
 
 
-def _rule_config(rules: RulesConfig, rule: Rule[Any]) -> Any:
-    return getattr(rules, rule.id)
+def rule_info(rule: Rule[Any]) -> RuleInfo:
+    """A rule's id, description and severity before any config: the built-in default, or the
+    severity a custom rule is written with."""
+    if isinstance(rule, CustomRule):
+        return RuleInfo(rule.id, rule.description, rule.entry.severity, custom=True)
+    return RuleInfo(rule.id, rule.description, getattr(RulesConfig(), rule.id).severity)

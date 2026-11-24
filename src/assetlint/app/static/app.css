@@ -321,3 +321,32 @@ button:focus-visible, input:focus-visible, .rule-list button:focus-visible { out
 .fix .fix-blocked:not(:first-child) { padding: 0; }
 .fix-dialog > .fix-blocked { padding: 18px; }
 .fix-actions { display: flex; justify-content: flex-end; }
+
+/* --- custom rules ------------------------------------------------------ */
+
+.custom-rule { display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
+.custom-head { display: flex; gap: 10px; align-items: flex-end; }
+.custom-head .field { width: 200px; }
+.custom-head .field.grow { flex: 1; width: auto; }
+.custom-head .segmented { margin-bottom: 2px; }
+.custom-scope { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.custom-scope textarea { min-height: 56px; }
+.custom-subhead { margin: 4px 0 0; font-size: 13px; color: var(--muted); font-weight: 500; }
+.requirement-label { font-size: 13px; }
+.add-requirement {
+  align-self: flex-start; padding: 5px 8px;
+  background: var(--bg); color: var(--accent); border: 1px solid var(--line); border-radius: var(--radius);
+  font-size: 13px;
+}
+@media (max-width: 900px) { .custom-head { flex-wrap: wrap; } .custom-scope { grid-template-columns: 1fr; } }
+.custom-rule .setting-row { grid-template-columns: 200px 1fr 28px; align-items: start; }
+.custom-rule .requirement-label { padding-top: 6px; }
+.custom-rule .setting-row textarea, .custom-rule .setting-row input[type="number"] {
+  width: 100%; padding: 6px 9px; min-height: 0;
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+  font-family: var(--mono); font-size: 13px; resize: vertical;
+}
+.custom-rule .setting-row textarea { min-height: 34px; }
+.custom-rule .setting-row textarea:focus, .custom-rule .setting-row input:focus { outline: none; border-color: var(--accent); }
+.custom-rule .setting-row .hint { color: var(--faint); font-size: 12px; margin-top: 3px; }
+.custom-rule .setting-row .icon-button { padding-top: 6px; }

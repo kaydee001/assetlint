@@ -15,7 +15,6 @@ from typing import Any
 from assetlint import __version__
 from assetlint.config import ConfigError, find_config, load_config
 from assetlint.engine import run
-from assetlint.rules import BUILTIN_RULES
 
 STATE_FILE = Path.home() / ".assetlint" / "app.json"
 MAX_RECENT = 8
@@ -57,9 +56,12 @@ def check(folder: str) -> dict[str, Any]:
             {
                 "id": rule.id,
                 "description": rule.description,
-                "severity": getattr(config.rules, rule.id).severity,
+                "severity": rule.default_severity
+                if rule.custom
+                else getattr(config.rules, rule.id).severity,
+                "custom": rule.custom,
             }
-            for rule in BUILTIN_RULES
+            for rule in result.rules
         ],
     }
 

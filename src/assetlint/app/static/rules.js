@@ -72,6 +72,7 @@ function changes() {
   if (o.preset !== d.preset) out.preset = d.preset;
   if (!same(o.exclude, d.exclude)) out.exclude = d.exclude;
   if (!same(o.overrides, d.overrides)) out.overrides = d.overrides;
+  if (!same(o.custom, d.custom)) out.custom = d.custom;
 
   const rules = {};
   d.rules.forEach((rule, i) => {
@@ -145,6 +146,7 @@ function renderRules() {
     el("h2", {}, "Checks"),
     el("p", { class: "section-help" }, "Set how strict each check is, and its limits."),
     el("div", { class: "rule-grid" }, d.rules.map((r, i) => ruleCard(r, i))),
+    customSection(d),
     overridesSection(d),
     excludeSection(d),
   );
@@ -252,6 +254,13 @@ function valueInput(kind, value, onChange, opts = {}) {
         } });
     case "map":
       return mapInput(value || {}, onChange, opts.valueKind);
+    case "lines":
+      return el("textarea", { id: opts.id, spellcheck: false, value: (value || []).join("\n"),
+        placeholder: opts.placeholder || "",
+        oninput: (e) => {
+          const list = e.target.value.split("\n").map((l) => l.trim()).filter(Boolean);
+          onChange(list.length ? list : null);
+        } });
     default: // text
       return el("input", { type: "text", id: opts.id, class: cls, value: value ?? "", spellcheck: false,
         oninput: (e) => onChange(e.target.value === "" ? null : e.target.value) });
@@ -280,6 +289,96 @@ function mapInput(map, onChange, valueKind) {
   };
   draw();
   return box;
+}
+
+// --- custom rules ------------------------------------------------------------------
+
+function customSection(d) {
+  return el("section", {},
+    el("h2", {}, "Your rules"),
+    el("p", { class: "section-help" },
+      "Rules for your team's workflow: pick the files, then what they must be. " +
+      "Each requirement a file misses is one problem."),
+    d.custom.map((rule, i) => customCard(rule, i, d.custom_fields)),
+    el("button", { type: "button", class: "link-button", onclick: () => {
+      d.custom.push({ id: nextRuleId(d.custom), severity: "error" });
+      renderRules();
+    } }, "+ Add rule"));
+}
+
+function nextRuleId(rules) {
+  let n = rules.length + 1;
+  while (rules.some((r) => r.id === `rule-${n}`)) n++;
+  return `rule-${n}`;
+}
+
+function customCard(rule, index, fields) {
+  const byKey = Object.fromEntries(fields.map((f) => [f.key, f]));
+  const requirements = fields.filter((f) => f.key !== "paths" && f.key !== "types");
+  const list = el("div", { class: "rule-fields" });
+  const unused = () => requirements.filter((f) => !(f.key in rule));
+
+  const draw = () => {
+    const rows = requirements.filter((f) => f.key in rule).map((f) => requirementRow(rule, f, draw));
+    const spare = unused();
+    list.replaceChildren(...rows,
+      spare.length
+        ? el("select", { class: "add-requirement", "aria-label": "Add a requirement", onchange: (e) => {
+            const f = byKey[e.target.value];
+            rule[f.key] = f.kind === "bool" ? true : null;
+            draw(); changed();
+          } },
+          el("option", { value: "", selected: true, disabled: true }, "+ Add requirement…"),
+          spare.map((f) => el("option", { value: f.key }, f.label)))
+        : null);
+  };
+  draw();
+
+  const id = `c-${index}`;
+  const fieldBox = (key) => {
+    const f = byKey[key];
+    return el("div", { class: "field" },
+      el("label", { for: `${id}-${key}` }, f.label),
+      valueInput(f.kind, rule[key], (v) => { setOrDrop(rule, key, v); changed(); },
+        { id: `${id}-${key}`, placeholder: key === "paths" ? "characters/\nprops/*_LOD0.*" : "" }),
+      f.help ? el("div", { class: "hint" }, f.help) : "");
+  };
+
+  return el("article", { class: "card custom-rule" },
+    el("div", { class: "custom-head" },
+      el("div", { class: "field" },
+        el("label", { for: `${id}-id` }, "Rule id"),
+        el("input", { type: "text", id: `${id}-id`, value: rule.id || "", spellcheck: false,
+          placeholder: "hero-textures", oninput: (e) => { rule.id = e.target.value.trim(); changed(); } })),
+      el("div", { class: "field grow" },
+        el("label", { for: `${id}-description` }, "What it checks"),
+        el("input", { type: "text", id: `${id}-description`, value: rule.description || "",
+          placeholder: "Hero textures are square and at most 4K",
+          oninput: (e) => { setOrDrop(rule, "description", e.target.value.trim() || null); changed(); } })),
+      severityControl(rule.severity || "error", (v) => { rule.severity = v; renderRules(); }),
+      el("button", { type: "button", class: "secondary", onclick: () => {
+        editor.draft.custom.splice(index, 1);
+        renderRules();
+      } }, "Remove")),
+    el("div", { class: "custom-scope" }, fieldBox("paths"), fieldBox("types")),
+    el("h3", { class: "custom-subhead" }, "Requirements"),
+    list);
+}
+
+function requirementRow(rule, field, redraw) {
+  return el("div", { class: "override setting-row" },
+    el("span", { class: "requirement-label" }, field.label),
+    el("div", {},
+      valueInput(field.kind, rule[field.key], (v) => { rule[field.key] = v; changed(); }, { label: "Yes" }),
+      field.help ? el("div", { class: "hint" }, field.help) : ""),
+    el("button", { type: "button", class: "icon-button", title: "Remove requirement",
+      "aria-label": "Remove requirement",
+      onclick: () => { delete rule[field.key]; redraw(); changed(); } }, "×"));
+}
+
+function setOrDrop(obj, key, value) {
+  if (value === null || value === undefined) delete obj[key];
+  else obj[key] = value;
 }
 
 // --- folder overrides --------------------------------------------------------------
