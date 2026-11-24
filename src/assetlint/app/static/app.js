@@ -156,7 +156,8 @@ function fileCard(path, items) {
   return el("article", { class: "file" },
     el("div", { class: "file-head" },
       el("span", { class: "type" }, ext),
-      el("span", {}, el("span", { class: "dir" }, dir), el("span", { class: "name" }, name))),
+      el("span", {}, el("span", { class: "dir" }, dir), el("span", { class: "name" }, name)),
+      fixButton(path)),
     items.map((f) =>
       el("div", { class: "finding" },
         el("span", { class: `sev ${f.severity}` }, f.severity === "warn" ? "warning" : "error"),

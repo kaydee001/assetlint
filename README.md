@@ -19,6 +19,13 @@ file, filter by rule or severity, and change the rules (or start from an Unreal,
 Unity or Godot preset) without editing any files by hand. It uses the same
 `assetlint.toml` as the command line and CI, so all three agree.
 
+Some problems have a **Fix…** button: rename a badly named file, correct
+backslashes or the wrong case in a mesh's texture paths, or move a duplicate to
+the trash. Each fix shows every change before it's made, and renaming or
+trashing a file also updates the `.gltf`, `.glb`, `.obj` and `.mtl` files that
+point at it, plus a Unity `.meta` file next to it. Engine files that point at
+assets by path (scenes, Godot `.import`, Unreal `.uasset`) aren't updated.
+
 The window uses the web view your OS already has (Edge WebView2 on Windows,
 WebKit on macOS), so it stays small. Without the `app` extra, or with
 `--browser`, the same screens open in your browser instead.

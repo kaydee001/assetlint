@@ -280,3 +280,44 @@ button:focus-visible, input:focus-visible, .rule-list button:focus-visible { out
   .rule-grid, .presets { grid-template-columns: 1fr; }
   .setting-row { grid-template-columns: 1fr; }
 }
+
+/* --- fix dialog ------------------------------------------------------- */
+
+.file-head .fix-button { margin-left: auto; padding: 3px 12px; font-family: system-ui, sans-serif; font-size: 12px; }
+
+.fix-dialog {
+  width: min(680px, calc(100vw - 48px)); max-height: calc(100vh - 80px);
+  padding: 0; color: var(--text);
+  background: var(--panel); border: 1px solid var(--faint); border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+.fix-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+.fix-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.fix-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.fix-head code { font-family: var(--mono); font-size: 13px; font-weight: 400; color: var(--muted); }
+.fix-head .icon-button { font-size: 20px; }
+.fix-head .icon-button:hover { color: var(--text); }
+.fix-loading { color: var(--muted); padding: 18px; margin: 0; }
+
+.fix { padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 10px; }
+.fix + .fix { border-top: 1px solid var(--line); }
+.fix h3 { margin: 0; font-size: 14px; }
+.fix-name { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.fix-name input {
+  padding: 6px 9px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  font-family: var(--mono); font-size: 13px;
+}
+.fix-name input:focus { outline: none; border-color: var(--accent); }
+
+.changes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.changes li { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: baseline; font-size: 13px; }
+.changes code { font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+.changes .detail { display: block; color: var(--muted); font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; margin-top: 2px; }
+.change { font-size: 11px; font-weight: 600; border-radius: 4px; padding: 1px 6px; text-align: center; color: var(--muted); background: var(--raised); }
+.change.trash { color: var(--error); background: var(--error-bg); }
+.fix-note { margin: 0; color: var(--muted); font-size: 12.5px; }
+.fix-blocked { margin: 0; color: var(--error); font-size: 13px; }
+.fix .fix-blocked:not(:first-child) { padding: 0; }
+.fix-dialog > .fix-blocked { padding: 18px; }
+.fix-actions { display: flex; justify-content: flex-end; }

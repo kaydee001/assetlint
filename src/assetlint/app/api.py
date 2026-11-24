@@ -38,16 +38,21 @@ def check(folder: str) -> dict[str, Any]:
         target, config, root=config_path.parent if config_path else None, display_root=target
     )
     remember(target)
+    findings = [
+        {"path": f.path, "rule": f.rule, "severity": f.severity, "message": f.message}
+        for f in result.findings
+    ]
+    from assetlint.app.fixes import Project, fixable  # fixes builds on this module
+
+    project = Project(target, config_path.parent if config_path else target, config)
     return {
         "folder": str(target),
         "config": str(config_path) if config_path else None,
         "files_checked": result.files_checked,
         "errors": result.errors,
         "warnings": result.warnings,
-        "findings": [
-            {"path": f.path, "rule": f.rule, "severity": f.severity, "message": f.message}
-            for f in result.findings
-        ],
+        "findings": findings,
+        "fixable": sorted(fixable(project, findings)),
         "rules": [
             {
                 "id": rule.id,

@@ -38,13 +38,13 @@ class ReferencesRule(Rule[ReferencesRuleConfig]):
         if "\\" in ref.raw:
             yield f"{what}, with backslashes, which only work on Windows; use '/'"
 
-        found, on_disk = self._locate(ref.base, ref.raw.replace("\\", "/"))
+        found, on_disk = self.locate(ref.base, ref.raw.replace("\\", "/"))
         if not found:
             yield f"{what}, which doesn't exist"
         elif on_disk is not None:
             yield f"{what}, but it's '{on_disk}' on disk; the case must match on Linux"
 
-    def _locate(self, base: Path, rel: str) -> tuple[bool, str | None]:
+    def locate(self, base: Path, rel: str) -> tuple[bool, str | None]:
         """Find `rel` under `base` by listing folders, not `Path.exists()`, because
         Windows and macOS ignore case and would hide a mismatch that breaks on Linux.
         Returns (found, the path as spelled on disk when its case differs)."""

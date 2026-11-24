@@ -51,6 +51,7 @@ def main() -> None:
             "--windowed",  # no console window behind the app
             f"--icon={icon}",
             "--collect-data=assetlint",  # the app's HTML, CSS and JS
+            "--collect-submodules=send2trash",  # it picks its trash backend per OS at run time
             f"--distpath={ROOT / 'dist'}",
             f"--workpath={HERE / 'build'}",
             f"--specpath={HERE / 'build'}",

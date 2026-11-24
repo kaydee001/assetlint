@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from assetlint.app import api, editor
+from assetlint.app import api, editor, fixes
 
 _STATIC = files("assetlint.app") / "static"
 _CONTENT_TYPES = {
@@ -101,11 +101,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
 
         folder = str(body.get("folder", ""))
+        rel = str(body.get("path", ""))
+        name = body.get("name") if isinstance(body.get("name"), str) else None
         routes: dict[str, Callable[[], dict[str, Any]]] = {
             "/api/check": lambda: api.check(folder),
             "/api/browse": self.server.pick_folder,
             "/api/settings": lambda: editor.load_settings(folder),
             "/api/settings/save": lambda: editor.save_settings(folder, body.get("changes") or {}),
+            "/api/fixes": lambda: fixes.list_fixes(folder, rel, name),
+            "/api/fix": lambda: fixes.apply_fix(
+                folder, rel, str(body.get("fix", "")), str(body.get("fingerprint", "")), name
+            ),
         }
         handler = routes.get(urlsplit(self.path).path)
         if handler is None:
