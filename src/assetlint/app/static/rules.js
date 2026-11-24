@@ -52,7 +52,18 @@ function afterCheck(folder) {
 
 async function loadSettings(force = false) {
   if (!editor.folder) {
-    $("rules-page").replaceChildren(el("p", { class: "section-help" }, "Check a folder first."));
+    // Rules aren't global: each project keeps its own in assetlint.toml, so say where they
+    // live and offer the one step that gets there.
+    $("rules-page").replaceChildren(
+      el("div", { class: "empty welcome" },
+        el("h1", {}, "Rules belong to a folder"),
+        el("p", {},
+          "Each project keeps its rules in an ", el("code", {}, "assetlint.toml"),
+          " file in its folder, so the command line and CI use the same ones. Choose a folder to see " +
+          "and change its rules. If it has no rules file yet, saving creates one."),
+        el("div", { class: "start" },
+          el("button", { type: "button", onclick: () => $("choose").click() },
+            $("browse").hidden ? "Paste a folder path above" : "Choose a folder…"))));
     return;
   }
   if (editor.draft && !force) return renderRules();
