@@ -1,9 +1,12 @@
 name: CI
 
+# Off for now: runs only when started by hand (Actions tab > CI > Run workflow).
+# To turn it back on, add:
+#   push:
+#     branches: [main]
+#   pull_request:
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 # A new push to the same branch or PR cancels the run still going for the old one.
 concurrency:
