@@ -39,7 +39,6 @@ for (const button of document.querySelectorAll("[data-view]")) {
 
 // Called by app.js after every successful check.
 function afterCheck(folder) {
-  $("tabs").hidden = false;
   if (editor.folder !== folder) {
     editor.folder = folder;
     editor.original = editor.draft = null;

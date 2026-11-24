@@ -15,7 +15,16 @@
           <img src="/static/icon.svg" alt="" width="22" height="22" />
           <span>Asset Lint</span>
         </div>
-        <button type="button" class="rail-item" data-view="rules" aria-pressed="false"
+        <button type="button" class="rail-item" data-view="problems" aria-pressed="true"
+                title="Problems in this folder">
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M6 4.5h7.5M6 8h7.5M6 11.5h7.5" />
+            <path d="M2.5 4.5h.01M2.5 8h.01M2.5 11.5h.01" />
+          </svg>
+          <span>Problems</span>
+          <span class="badge" id="problems-count" hidden></span>
+        </button>
+        <button type="button" class="rail-item bottom" data-view="rules" aria-pressed="false"
                 title="The rules for this folder">
           <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M2.5 4.5h6M11.5 4.5h2M2.5 11.5h2M7.5 11.5h6" />
@@ -36,21 +45,23 @@
             <button type="button" id="browse" class="secondary" hidden>Browse…</button>
             <button type="submit" id="check" title="Check this folder (F5 checks it again)">Check</button>
           </form>
-          <nav class="tabs" id="tabs" aria-label="View">
-            <button type="button" data-view="problems" aria-pressed="true">Problems <span class="n" id="problems-count"></span></button>
-          </nav>
         </header>
 
         <main class="rules-page" id="rules-page" hidden></main>
 
         <main class="layout">
           <section class="filters" id="sidebar" aria-label="Filters" hidden>
-            <div class="summary" id="summary"></div>
-            <div class="chips" id="severity-section" role="group" aria-label="Severity">
-              <div class="toggles" id="severity-filters"></div>
+            <div class="filters-top">
+              <div class="summary" id="summary"></div>
+              <p class="config" id="config"></p>
+              <div class="search" id="search-slot"></div>
             </div>
-            <ul class="rule-list chips" id="rule-filters" aria-label="By rule"></ul>
-            <p class="config" id="config"></p>
+            <div class="filters-chips">
+              <div class="chips" id="severity-section" role="group" aria-label="Severity">
+                <div class="toggles" id="severity-filters"></div>
+              </div>
+              <ul class="rule-list chips" id="rule-filters" aria-label="By rule"></ul>
+            </div>
           </section>
 
           <section class="results" id="results">

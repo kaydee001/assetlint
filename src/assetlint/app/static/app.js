@@ -142,7 +142,8 @@ function configNote(data) {
 function render() {
   const data = state.data;
   const total = data.errors + data.warnings;
-  $("problems-count").textContent = total ? String(total) : "";
+  $("problems-count").textContent = total > 999 ? "999+" : String(total);
+  $("problems-count").hidden = total === 0;
   updateCheckButton();
   if (data.findings.length === 0) {
     $("sidebar").hidden = true; // nothing to filter
@@ -161,10 +162,8 @@ function render() {
     "aria-label": "Filter by file or message", "aria-keyshortcuts": "Control+F",
     oninput: (e) => { state.query = e.target.value; renderList(); },
   });
-  const toolbar = el("div", { class: "toolbar" },
-    el("div", { class: "search" }, search, el("kbd", { "aria-hidden": "true" }, "Ctrl F")),
-    el("span", { class: "shown", id: "shown" }));
-  $("results").replaceChildren(toolbar, el("div", { id: "list" }));
+  $("search-slot").replaceChildren(search, el("kbd", { "aria-hidden": "true" }, "Ctrl F"));
+  $("results").replaceChildren(el("p", { class: "shown", id: "shown" }), el("div", { id: "list" }));
   renderList();
 }
 

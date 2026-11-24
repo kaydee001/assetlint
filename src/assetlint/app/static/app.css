@@ -123,10 +123,17 @@ kbd {
 }
 .brand { font-weight: 600; color: var(--text); padding: var(--s1) 0 var(--s2); }
 .rail-item {
-  height: auto; margin-top: auto; padding: 7px 0 6px;
+  position: relative; height: auto; padding: 7px 0 6px;
   background: none; border: 1px solid transparent; color: var(--muted); font-weight: 500;
 }
+.rail-item.bottom { margin-top: auto; }
 .rail-item .icon { width: 18px; height: 18px; }
+.rail-item .badge {
+  position: absolute; top: 1px; right: 1px; min-width: 17px; height: 15px; padding: 0 4px;
+  border-radius: 999px; background: var(--raised); border: 1px solid var(--line-strong);
+  color: var(--text); font-size: 10px; font-weight: 600; line-height: 13px; font-variant-numeric: tabular-nums;
+}
+.brand { margin-bottom: var(--s2); }
 .rail-item:hover { background: var(--raised); color: var(--text); }
 .rail-item[aria-pressed="true"] { background: var(--raised); color: var(--text); border-color: var(--line); }
 .rail-item[aria-pressed="true"] .icon { color: var(--accent); }
@@ -134,35 +141,27 @@ kbd {
 .main { min-width: 0; display: flex; flex-direction: column; }
 .head, .layout, .rules-page { width: min(100% - 2 * var(--s5), var(--column)); margin: 0 auto; }
 
-.head {
-  position: sticky; top: 0; z-index: 2;
-  display: flex; flex-direction: column; align-items: center; gap: var(--s2);
-  padding: var(--s3) 0 var(--s2);
-  background: var(--bg);
-}
+.head { position: sticky; top: 0; z-index: 2; padding: var(--s3) 0 var(--s2); background: var(--bg); }
 .folder {
   width: 100%; display: flex; gap: 6px; padding: 6px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
 }
 .folder input { flex: 1; min-width: 0; }
 
-.tabs {
-  display: flex; gap: 2px; padding: 2px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-}
-.tabs button { height: 24px; padding: 0 var(--s3); background: none; color: var(--muted); font-weight: 500; }
-.tabs button:hover { background: none; color: var(--text); }
-.tabs button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
-.tabs .n { color: var(--faint); font-variant-numeric: tabular-nums; font-weight: 400; }
 
 /* --- problems: a filter row of chips, then the list ------------------------- */
 
 .layout { flex: 1; }
 
-.filters {
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3);
-  padding: var(--s2) 0 var(--s3); border-bottom: 1px solid var(--line);
-}
+/* two lines: what you're looking at (+ search), then how to narrow it */
+.filters { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s2) 0 var(--s3); border-bottom: 1px solid var(--line); }
+.filters-top { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.filters-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s3); }
+.search { position: relative; width: 260px; margin-left: auto; }
+.search input { padding-right: 40px; }
+.search kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.shown { margin: 0 0 var(--s2); color: var(--muted); font-variant-numeric: tabular-nums; }
+.shown:empty { display: none; }
 .summary { display: flex; align-items: baseline; gap: 6px; margin-right: var(--s2); }
 .summary .count { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .summary .detail { color: var(--muted); }
@@ -185,18 +184,13 @@ kbd {
 #severity-section + .rule-list { padding-left: var(--s3); border-left: 1px solid var(--line); }
 #severity-section[hidden] + .rule-list { padding-left: 0; border-left: 0; }
 
-.config { margin: 0 0 0 auto; color: var(--faint); font-size: 12px; overflow-wrap: anywhere; }
+.config { margin: 0; color: var(--faint); font-size: 12px; overflow-wrap: anywhere; }
 .config code { color: var(--muted); }
 
 .results { padding: var(--s3) 0 var(--s7); min-width: 0; transition: opacity var(--ease); }
 /* while a check runs, the old results stay but fade, so it's clear they're about to change */
 .results[aria-busy="true"] { opacity: 0.45; pointer-events: none; }
 
-.toolbar { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s3); }
-.toolbar .search { position: relative; width: 300px; }
-.toolbar .search input { padding-right: 34px; }
-.toolbar .search kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-.toolbar .shown { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* problems grouped by file: the path leads, its problems sit tight under it */
 #list { max-width: 1100px; }
@@ -387,7 +381,7 @@ kbd {
 
 @media (max-width: 900px) {
   .rule-card { grid-template-columns: 1fr; }
-  .presets.segmented { display: flex; flex-wrap: wrap; }
+  .presets.segmented { flex-wrap: wrap; }
   .setting-row, .custom-rule .setting-row { grid-template-columns: 1fr var(--control); }
   .custom-head { flex-wrap: wrap; }
   .custom-scope { grid-template-columns: 1fr; }
@@ -396,5 +390,5 @@ kbd {
 @media (max-width: 760px) {
   .finding { grid-template-columns: 16px 1fr; }
   .finding .msg { grid-column: 2; }
-  .toolbar .search { width: 100%; }
+  .search { width: 100%; margin-left: 0; }
 }
