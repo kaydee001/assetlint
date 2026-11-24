@@ -281,3 +281,17 @@ def test_load_config_reports_custom_errors_with_their_place(tmp_path: Path) -> N
     path = write(tmp_path, "assetlint.toml", '[[custom]]\nid = "x"\nsquare = true\nshape = 1\n')
     with pytest.raises(ConfigError, match=r"custom\.0\.shape: unknown key"):
         load_config(path)
+
+
+def test_custom_rules_can_target_types_the_built_in_rules_skip(tmp_path: Path) -> None:
+    """.blend1 isn't a checked type, so only the custom rule sees it: no naming
+    problem for the space in the name, no format check."""
+    write(tmp_path, "My Scene.blend1", b"BLENDER")
+    write(tmp_path, "SM_Ok.obj", obj_text())
+    config_path = write(
+        tmp_path,
+        "assetlint.toml",
+        '[[custom]]\nid = "no-backups"\ntypes = [".blend1"]\nforbidden = true\n',
+    )
+    result = run(tmp_path, load_config(config_path), root=tmp_path, display_root=tmp_path)
+    assert [(f.path, f.rule) for f in result.findings] == [("My Scene.blend1", "no-backups")]

@@ -174,7 +174,10 @@ forbidden = true
 | `requires` | have these files next to it: `{stem}` is its name without extension, `{base}` the same without its naming prefix |
 
 Requirements that don't fit a file type, such as triangles on a PNG, are skipped
-for that file.
+for that file. A custom rule's `types` can include types the built-in rules don't
+check (`types = [".blend1"]` with `forbidden = true` keeps Blender backups out);
+only that rule looks at those files. `[[overrides]]` don't change custom rules:
+each one's `paths` already says where it applies.
 
 ## Output
 

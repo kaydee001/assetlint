@@ -71,9 +71,14 @@ def run(
 ) -> Result:
     """Check every asset under `target` against the active rules."""
     display_root = display_root.resolve() if display_root else default_display_root()
+    # Custom rules may name types the built-in rules don't check (".blend1" backups, say):
+    # find those files too, but only for the custom rules.
+    builtin_types = set(config.extensions)
+    custom_types = {ext for entry in config.custom for ext in entry.types} - builtin_types
+    search = config.model_copy(update={"extensions": sorted(builtin_types | custom_types)})
     assets = [
         replace(asset, shown=display_path(asset.path, display_root))
-        for asset in discover(target, config, root)
+        for asset in discover(target, search, root)
     ]
     settings = {asset: config.rules_for(asset.rel) for asset in assets}
     rules = build_rules(config)
@@ -86,6 +91,8 @@ def run(
 
     for rule in rules:
         for asset in assets:
+            if asset.ext not in builtin_types and not isinstance(rule, CustomRule):
+                continue
             rule_config = rule.settings(settings[asset], asset)
             if rule_config is None or rule_config.severity == "off":
                 continue
