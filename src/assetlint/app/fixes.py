@@ -18,6 +18,7 @@ import json
 import os
 import re
 import struct
+import sys
 from collections import defaultdict
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -35,6 +36,7 @@ from assetlint.rules.duplicates import _digest
 from assetlint.rules.references import _ABSOLUTE, ReferencesRule
 
 MESH_TYPES = (".gltf", ".glb", ".obj")
+RULE_FIXES = {"naming": "rename", "references": "paths", "duplicates": "trash"}
 SIDECAR = ".meta"  # Unity keeps an asset's GUID and import settings in <file>.meta
 ENGINE_NOTE = (
     "Engine files that point at it by path (scenes, Godot .import, Unreal .uasset) aren't updated."
@@ -67,6 +69,7 @@ class Fix:
     notes: list[str] = field(default_factory=list)
     blocked: str | None = None  # why it can't be applied as it stands
     name: str | None = None  # rename: the new file name
+    button: str = "Apply"
 
     def fingerprint(self) -> str:
         h = hashlib.sha256()
@@ -122,10 +125,14 @@ def fixable(project: Project, findings: list[dict[str, Any]]) -> set[str]:
     return paths
 
 
-def list_fixes(folder: str, rel: str, name: str | None = None) -> dict[str, Any]:
+def list_fixes(
+    folder: str, rel: str, name: str | None = None, rules: list[str] | None = None
+) -> dict[str, Any]:
+    """The fixes for one file. `rules` limits them to those rules' fixes (the file's findings)."""
     project = load_project(folder)
     path = file_in(project, rel)
-    return {"path": rel, "fixes": [_to_json(project, fix) for fix in plan(project, path, name)]}
+    planned = _planned(project, path, name, set(rules) if rules else set(RULE_FIXES))
+    return {"path": rel, "fixes": [_to_json(project, fix) for fix in planned]}
 
 
 def apply_fix(
@@ -133,7 +140,9 @@ def apply_fix(
 ) -> dict[str, Any]:
     project = load_project(folder)
     path = file_in(project, rel)
-    fix = next((f for f in plan(project, path, name) if f.id == fix_id), None)
+    rule = next((r for r, kind in RULE_FIXES.items() if fix_id.split(":")[0] == kind), None)
+    planned = _planned(project, path, name, {rule} if rule else set())
+    fix = next((f for f in planned if f.id == fix_id), None)
     if fix is None or fix.fingerprint() != fingerprint:
         raise ApiError("The files changed since the preview. Look at the fix again.")
     if fix.blocked:
@@ -142,20 +151,41 @@ def apply_fix(
     return {"done": fix.title}
 
 
-def plan(project: Project, path: Path, name: str | None = None) -> list[Fix]:
-    rel = project.asset(path).rel
-    rules = project.config.rules_for(rel)
+def _planned(project: Project, path: Path, name: str | None, wanted: set[str]) -> list[Fix]:
+    """`plan`, with files that change or vanish under it reported instead of crashing."""
+    try:
+        return plan(project, path, name, wanted)
+    except (OSError, ValueError, struct.error) as exc:
+        raise ApiError(f"Couldn't work out the fix: {_why(exc)}") from exc
+
+
+def plan(
+    project: Project, path: Path, name: str | None = None, wanted: set[str] | None = None
+) -> list[Fix]:
+    """The fixes for `path`, for the rules in `wanted` (default: all). Planning only reads."""
+    wanted = set(RULE_FIXES) if wanted is None else wanted
+    rules = project.config.rules_for(project.asset(path).rel)
     fixes = []
-    if rules.naming.severity != "off" and (
-        name is not None or _naming_problems(path.name, rules.naming)
+    if (
+        "naming" in wanted
+        and rules.naming.severity != "off"
+        and (name is not None or _naming_problems(path.name, rules.naming))
     ):
         fixes.append(
             _rename(project, path, suggest_name(path.name, rules.naming) if name is None else name)
         )
-    if rules.references.severity != "off" and (repairs := _path_repairs(path)):
+    if (
+        "references" in wanted
+        and rules.references.severity != "off"
+        and (repairs := _path_repairs(path))
+    ):
         fixes.append(_repair_paths(project, repairs))
-    if rules.duplicates.severity != "off":
+    if "duplicates" in wanted and rules.duplicates.severity != "off":
         fixes.extend(_trash_duplicate(project, path))
+    for fix in fixes:
+        outside = [c.path for c in fix.changes if not c.path.resolve().is_relative_to(project.root)]
+        if outside and not fix.blocked:
+            fix.blocked = f"It would change {outside[0]}, which is outside the project folder."
     return fixes
 
 
@@ -173,6 +203,7 @@ def _to_json(project: Project, fix: Fix) -> dict[str, Any]:
         "changes": [change(c) for c in fix.changes],
         "notes": fix.notes,
         "blocked": fix.blocked,
+        "button": fix.button,
         "fingerprint": fix.fingerprint(),
     }
 
@@ -206,21 +237,23 @@ def _naming_problems(filename: str, naming: NamingRuleConfig) -> list[str]:
 
 def _rename(project: Project, path: Path, name: str) -> Fix:
     name = name.strip()
-    fix = Fix(id="rename", title="Rename", name=name)
+    fix = Fix(id="rename", title="Rename", name=name, button="Rename")
     problem = _bad_name(path, name)
     if problem:
         fix.blocked = problem
         return fix
 
     target = path.with_name(name)
-    if target.exists() and not os.path.samefile(target, path):
-        fix.blocked = f"'{project.shown(target)}' already exists. Choose another name."
-        return fix
-    fix.title = f"Rename to {name}"
-    fix.changes.append(Change("rename", path, to=target))
     sidecar = path.with_name(path.name + SIDECAR)
+    moves = [(path, target)]
     if sidecar.is_file():
-        fix.changes.append(Change("rename", sidecar, to=target.with_name(name + SIDECAR)))
+        moves.append((sidecar, target.with_name(name + SIDECAR)))
+    for old, new in moves:
+        if new.exists() and not os.path.samefile(new, old):
+            fix.blocked = f"'{project.shown(new)}' already exists. Choose another name."
+            return fix
+    fix.title = f"Rename to {name}"
+    fix.changes += [Change("rename", old, to=new) for old, new in moves]
 
     referrers = _referrers(project.root, path)
     for holder, refs in referrers.items():
@@ -291,7 +324,7 @@ def _repair_paths(project: Project, repairs: list[_Repair]) -> Fix:
     for r in repairs:
         by_holder[r.holder][r.raw] = r.new
     n = len(repairs)
-    fix = Fix(id="paths", title=f"Fix {n} path{'s' if n > 1 else ''}")
+    fix = Fix(id="paths", title=f"Fix {n} path{'s' if n > 1 else ''}", button="Fix paths")
     fix.changes = [_edit(holder, edits) for holder, edits in by_holder.items()]
     return fix
 
@@ -313,11 +346,19 @@ def _trash_duplicate(project: Project, path: Path) -> Iterator[Fix]:
     digest = _digest(Asset(path=path, rel=""))
     copies = [p for p in same_size if _digest(Asset(path=p, rel="")) == digest]
     referrers = _referrers(project.root, path) if copies else {}
+    permanent = _no_recycle_bin(path)
     for kept in copies:
         fix = Fix(
             id=f"trash:{project.shown(kept)}",
             title=f"Move to the trash, keep {project.shown(kept)}",
         )
+        fix.button = "Delete" if permanent else "Move to trash"
+        if permanent:
+            fix.title = f"Delete, keep {project.shown(kept)}"
+            fix.notes.append(
+                "This folder is on a network drive, which has no Recycle Bin: "
+                "the file will be deleted for good."
+            )
         fix.changes.append(Change("trash", path))
         sidecar = path.with_name(path.name + SIDECAR)
         if sidecar.is_file():
@@ -331,6 +372,19 @@ def _trash_duplicate(project: Project, path: Path) -> Iterator[Fix]:
         if sidecar.is_file():
             fix.notes.append("Unity links assets by the GUID in .meta files, not by path.")
         yield fix
+
+
+def _no_recycle_bin(path: Path) -> bool:
+    """True on Windows network drives, where 'move to the Recycle Bin' deletes for good."""
+    if sys.platform != "win32":
+        return False  # macOS and Linux keep a trash folder on each volume
+    anchor = path.anchor
+    if anchor.startswith("\\\\"):
+        return True  # a UNC path: \\server\share
+    import ctypes
+
+    drive_remote = 4
+    return bool(ctypes.windll.kernel32.GetDriveTypeW(anchor) == drive_remote)
 
 
 # --- who points at a file ------------------------------------------------------------------

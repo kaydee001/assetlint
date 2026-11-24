@@ -289,3 +289,48 @@ def test_check_lists_the_fixable_files(tmp_path: Path) -> None:
     write(tmp_path, "Cube.001.obj", obj_text())
     write(tmp_path, "SM_Ok.gltf", gltf_text(["missing.png"]))
     assert api.check(str(tmp_path))["fixable"] == ["Cube.001.obj"]
+
+
+def test_a_rename_never_hashes_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Typing a name re-plans the rename; it mustn't hash every same-size texture each time."""
+    write(tmp_path, "Cube.001.obj", obj_text())
+    write(tmp_path, "Other.obj", obj_text())  # same size and content: a duplicate
+
+    def no_hashing(asset: Any) -> bytes:
+        raise AssertionError("hashed a file")
+
+    monkeypatch.setattr(fixes, "_digest", no_hashing)
+    found = fixes.list_fixes(str(tmp_path), "Cube.001.obj", "Crate.obj", rules=["naming"])
+    fix = found["fixes"][0]
+    apply(tmp_path, "Cube.001.obj", fix, name="Crate.obj")
+    assert (tmp_path / "Crate.obj").is_file()
+
+
+def test_rename_refuses_when_the_meta_name_is_taken(tmp_path: Path) -> None:
+    write(tmp_path, "Cube.001.obj", obj_text())
+    write(tmp_path, "Cube.001.obj.meta", "guid: 1\n")
+    write(tmp_path, "Cube.obj.meta", "guid: 2\n")  # left over from a deleted Cube.obj
+    assert (
+        "Cube.obj.meta' already exists" in fixes_for(tmp_path, "Cube.001.obj")["rename"]["blocked"]
+    )
+
+
+def test_a_file_that_cannot_be_planned_is_reported(tmp_path: Path) -> None:
+    write(tmp_path, "rock.png", image_bytes(4, 4))
+    # JSON readers accept UTF-16, so this passes the check, but it can't be edited as UTF-8
+    write(tmp_path, "A.gltf", gltf_text(["rock.png"]).encode("utf-16"))
+    write(tmp_path, "assetlint.toml", '[rules.naming]\nprefixes = { ".png" = "T_" }\n')
+    with pytest.raises(api.ApiError, match="Couldn't work out the fix"):
+        fixes.list_fixes(str(tmp_path), "rock.png")
+
+
+def test_duplicates_on_a_network_drive_are_deleted_for_good(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    png = image_bytes(4, 4)
+    write(tmp_path, "T_A.png", png)
+    write(tmp_path, "T_B.png", png)
+    monkeypatch.setattr(fixes, "_no_recycle_bin", lambda path: True)
+    fix = fixes_for(tmp_path, "T_B.png")["trash:T_A.png"]
+    assert fix["button"] == "Delete"
+    assert any("deleted for good" in note for note in fix["notes"])

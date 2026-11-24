@@ -67,9 +67,12 @@ async function check(folder) {
   $("check").disabled = true;
   $("check").textContent = "Checking…";
   try {
-    state.data = await api("/api/check", { folder });
-    state.rule = null;
-    state.query = "";
+    const data = await api("/api/check", { folder });
+    if (data.folder !== state.data?.folder) {
+      state.rule = null; // a new folder starts unfiltered; checking again keeps the filters
+      state.query = "";
+    }
+    state.data = data;
     render();
     loadRecent();
     afterCheck(state.data.folder);

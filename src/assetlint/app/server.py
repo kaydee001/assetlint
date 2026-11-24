@@ -108,7 +108,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/browse": self.server.pick_folder,
             "/api/settings": lambda: editor.load_settings(folder),
             "/api/settings/save": lambda: editor.save_settings(folder, body.get("changes") or {}),
-            "/api/fixes": lambda: fixes.list_fixes(folder, rel, name),
+            "/api/fixes": lambda: fixes.list_fixes(folder, rel, name, _strings(body.get("rules"))),
             "/api/fix": lambda: fixes.apply_fix(
                 folder, rel, str(body.get("fix", "")), str(body.get("fingerprint", "")), name
             ),
@@ -120,6 +120,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(handler())
         except api.ApiError as exc:
             self._send_error(HTTPStatus.UNPROCESSABLE_ENTITY, str(exc))
+        except Exception as exc:  # an answer the page can show beats a dropped connection
+            self._send_error(HTTPStatus.INTERNAL_SERVER_ERROR, f"Something went wrong: {exc!r}")
 
     # --- checks -------------------------------------------------------------
 
@@ -167,3 +169,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         self.end_headers()
         self.wfile.write(body)
+
+
+def _strings(value: Any) -> list[str] | None:
+    return [v for v in value if isinstance(v, str)] if isinstance(value, list) else None

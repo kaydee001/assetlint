@@ -18,7 +18,8 @@ async function openFixes(path) {
   dialog.replaceChildren(dialogHead(path), el("p", { class: "fix-loading" }, "Working out the fixes…"));
   if (!dialog.open) dialog.showModal();
   try {
-    const { fixes } = await api("/api/fixes", { folder: state.data.folder, path });
+    const rules = [...new Set(state.data.findings.filter((f) => f.path === path).map((f) => f.rule))];
+    const { fixes } = await api("/api/fixes", { folder: state.data.folder, path, rules });
     dialog.replaceChildren(dialogHead(path),
       ...(fixes.length
         ? fixes.map(fixSection)
@@ -48,7 +49,7 @@ function fixSection(fix) {
     const blocked = f.blocked ? [el("p", { class: "fix-blocked" }, f.blocked)] : [];
     body.replaceChildren(changeList(f), ...notes, ...blocked);
     apply.disabled = Boolean(f.blocked);
-    apply.textContent = f.id === "rename" ? "Rename" : f.id === "paths" ? "Fix paths" : "Move to trash";
+    apply.textContent = f.button;
   };
 
   apply.addEventListener("click", async () => {
@@ -88,7 +89,9 @@ function fixSection(fix) {
 async function replan(name, show) {
   const asked = ++fixer.asked; // only the answer to the latest name counts
   try {
-    const { fixes } = await api("/api/fixes", { folder: state.data.folder, path: fixer.path, name });
+    const { fixes } = await api("/api/fixes", {
+      folder: state.data.folder, path: fixer.path, name, rules: ["naming"],
+    });
     const rename = fixes.find((f) => f.id === "rename");
     if (rename && asked === fixer.asked) show(rename);
   } catch (error) {
