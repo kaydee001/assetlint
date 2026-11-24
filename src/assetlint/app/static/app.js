@@ -42,6 +42,29 @@ function el(tag, props = {}, ...children) {
   return node;
 }
 
+// Drawn icons, one 16px grid and one stroke weight. `label` makes it announced; else it's decorative.
+const ICONS = {
+  close: '<path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/>',
+  error: '<circle cx="8" cy="8" r="5.5"/><path d="M8 5.25v3.25M8 10.75v.01"/>',
+  warn: '<path d="M8 2.75l5.75 10H2.25z"/><path d="M8 6.75v2.5M8 11.25v.01"/>',
+  cube: '<path class="cube-edge" d="M8 1.75l5.4 3.1v6.3L8 14.25l-5.4-3.1v-6.3z"/>' +
+        '<path class="cube-inner" d="M2.6 4.85L8 8l5.4-3.15M8 8v6.25"/>',
+};
+
+function icon(name, label = "") {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("class", `icon icon-${name}`);
+  if (label) {
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", label);
+  } else {
+    svg.setAttribute("aria-hidden", "true");
+  }
+  svg.innerHTML = ICONS[name]; // fixed strings above, never user data
+  return svg;
+}
+
 // "D:\game\assets\assetlint.toml" -> "assets/assetlint.toml" (the full path is in the tooltip)
 function shortConfigPath(path) {
   const parts = path.split(/[\\/]/).filter(Boolean);
@@ -68,10 +91,13 @@ async function check(folder) {
   $("check").textContent = "Checking…";
   try {
     const data = await api("/api/check", { folder });
-    if (data.folder !== state.data?.folder) {
+    const sameFolder = data.folder === state.data?.folder;
+    if (!sameFolder) {
       state.rule = null; // a new folder starts unfiltered; checking again keeps the filters
       state.query = "";
     }
+    // How many problems this folder had before, so reaching zero can say what changed.
+    state.before = sameFolder ? state.data.errors + state.data.warnings : null;
     state.data = data;
     render();
     loadRecent();
@@ -104,26 +130,26 @@ function visibleFindings() {
     (!q || f.path.toLowerCase().includes(q) || f.message.toLowerCase().includes(q)));
 }
 
+function configNote(data) {
+  return data.config
+    ? el("span", { title: data.config }, "Rules from ", el("code", {}, shortConfigPath(data.config)))
+    : "No assetlint.toml here, so the default rules apply.";
+}
+
 function render() {
   const data = state.data;
+  if (data.findings.length === 0) {
+    $("sidebar").hidden = true; // nothing to filter
+    $("results").replaceChildren(cleanState(data));
+    return;
+  }
+
   $("sidebar").hidden = false;
   renderSummary(data);
   renderSeverityFilters(data);
   renderRuleFilters(data);
-  $("config").replaceChildren(
-    data.config
-      ? el("span", { title: data.config }, "Rules from ", el("code", {}, shortConfigPath(data.config)))
-      : "No assetlint.toml found, so the default rules apply.");
+  $("config").replaceChildren(configNote(data));
 
-  if (data.findings.length === 0) {
-    $("results").replaceChildren(
-      el("div", { class: "empty clean" },
-        el("h1", {}, "No problems found"),
-        el("p", {}, `All ${plural(data.files_checked, "file")} pass every rule.`)));
-    return;
-  }
-
-  const findings = visibleFindings();
   const search = el("input", {
     type: "search", placeholder: "Filter by file or message", value: state.query,
     "aria-label": "Filter by file or message",
@@ -131,14 +157,30 @@ function render() {
   });
   const toolbar = el("div", { class: "toolbar" }, search, el("span", { class: "shown", id: "shown" }));
   $("results").replaceChildren(toolbar, el("div", { id: "list" }));
-  renderList(findings);
+  renderList();
+}
+
+// The one moment the app celebrates: a folder with nothing left to fix. When this check
+// followed one with problems, say what changed; the cube draws itself once.
+function cleanState(data) {
+  const fixedSome = state.before > 0;
+  return el("div", { class: `empty clean${fixedSome ? " earned" : ""}` },
+    el("div", { class: "clean-mark" }, icon("cube")),
+    el("h1", {}, "All clear"),
+    el("p", {}, fixedSome
+      ? `Down from ${plural(state.before, "problem")} to none. ${passing(data.files_checked)}`
+      : passing(data.files_checked)),
+    el("p", { class: "config" }, configNote(data)));
+}
+
+function passing(n) {
+  return n === 1 ? "The file passes every rule." : `All ${n} files pass every rule.`;
 }
 
 function renderList(findings = visibleFindings()) {
   const total = state.data.findings.length;
-  $("shown").textContent = findings.length === total
-    ? plural(total, "problem")
-    : `${findings.length} of ${plural(total, "problem")}`;
+  // Only worth saying when filters hide some; the sidebar already has the total.
+  $("shown").textContent = findings.length === total ? "" : `Showing ${findings.length} of ${total}`;
 
   const byFile = new Map();
   for (const f of findings) {
@@ -154,72 +196,76 @@ function fileCard(path, items) {
   const slash = path.lastIndexOf("/");
   const dir = slash >= 0 ? path.slice(0, slash + 1) : "";
   const name = path.slice(slash + 1);
-  const ext = name.includes(".") ? name.split(".").pop().toUpperCase() : "";
   const rules = new Map(state.data.rules.map((r) => [r.id, r]));
   return el("article", { class: "file" },
     el("div", { class: "file-head" },
-      el("span", { class: "type" }, ext),
-      el("span", {}, el("span", { class: "dir" }, dir), el("span", { class: "name" }, name)),
+      el("span", { class: "path" }, el("span", { class: "dir" }, dir), el("span", { class: "name" }, name)),
       fixButton(path)),
     items.map((f) =>
-      el("div", { class: "finding" },
-        el("span", { class: `sev ${f.severity}` }, f.severity === "warn" ? "warning" : "error"),
+      el("div", { class: `finding ${f.severity}` },
+        icon(f.severity, f.severity === "warn" ? "Warning" : "Error"),
         el("span", { class: "rule", title: rules.get(f.rule)?.description || "" }, f.rule),
         el("span", { class: "msg" }, f.message))));
 }
 
 function renderSummary(data) {
-  const summary = $("summary");
-  summary.classList.toggle("clean", data.findings.length === 0);
-  const problems = data.errors + data.warnings;
-  summary.replaceChildren(
-    el("div", { class: "count" }, problems ? plural(problems, "problem") : "All clear"),
+  $("summary").replaceChildren(
+    el("div", { class: "count" }, plural(data.errors + data.warnings, "problem")),
     el("div", { class: "detail" },
-      problems
-        ? `${plural(data.errors, "error")}, ${plural(data.warnings, "warning")} in ${plural(data.files_checked, "file")}`
-        : `${plural(data.files_checked, "file")} checked`));
+      `in ${new Set(data.findings.map((f) => f.path)).size} of ${plural(data.files_checked, "file")}`));
 }
 
 function renderSeverityFilters(data) {
-  const make = (severity, label, color, count) =>
+  // Only worth a filter when both kinds are present.
+  const both = data.errors > 0 && data.warnings > 0;
+  $("severity-section").hidden = !both;
+  if (!both) {
+    state.severities = new Set(["error", "warn"]); // a hidden filter must not hide anything
+    return;
+  }
+  const make = (severity, label, count) =>
     el("button", {
-      type: "button", class: "toggle", "aria-pressed": String(state.severities.has(severity)),
+      type: "button", class: `toggle ${severity}`, "aria-pressed": String(state.severities.has(severity)),
       onclick: () => {
         state.severities.has(severity) ? state.severities.delete(severity) : state.severities.add(severity);
         render();
       },
-    }, el("span", { class: "dot", style: `background:${color}` }), `${label} ${count}`);
+    }, icon(severity), el("span", {}, label), el("span", { class: "n" }, count));
   $("severity-filters").replaceChildren(
-    make("error", "Errors", "var(--error)", data.errors),
-    make("warn", "Warnings", "var(--warn)", data.warnings));
+    make("error", "Errors", data.errors),
+    make("warn", "Warnings", data.warnings));
 }
 
 function renderRuleFilters(data) {
   const counts = new Map();
   for (const f of data.findings) counts.set(f.rule, (counts.get(f.rule) || 0) + 1);
-  const all = el("li", {}, el("button", {
-    type: "button", "aria-pressed": String(state.rule === null),
-    onclick: () => { state.rule = null; render(); },
-  }, el("span", {}, "All rules"), el("span", { class: "n" }, data.findings.length)));
+  if (state.rule && !counts.has(state.rule)) state.rule = null; // that rule's problems are gone
 
-  const items = data.rules.map((rule) => {
-    const off = rule.severity === "off";
-    const n = counts.get(rule.id) || 0;
-    return el("li", {}, el("button", {
-      type: "button", title: rule.description, disabled: off,
-      class: off ? "off" : n === 0 ? "zero" : "", "aria-pressed": String(state.rule === rule.id),
-      onclick: () => { state.rule = state.rule === rule.id ? null : rule.id; render(); },
-    }, el("span", {}, rule.id), el("span", { class: "n" }, off ? "off" : n)));
-  });
-  $("rule-filters").replaceChildren(all, ...items);
+  const button = (id, label, n, title = "") =>
+    el("li", {}, el("button", {
+      type: "button", title, "aria-pressed": String(state.rule === id),
+      onclick: () => { state.rule = state.rule === id || id === null ? null : id; render(); },
+    }, el("span", {}, label), el("span", { class: "n" }, n)));
+
+  // Only the rules that found something: the Rules tab lists every rule and its settings.
+  const items = data.rules
+    .filter((rule) => counts.has(rule.id))
+    .map((rule) => button(rule.id, rule.id, counts.get(rule.id), rule.description));
+  $("rule-filters").replaceChildren(button(null, "All rules", data.findings.length), ...items);
 }
 
 // --- recent folders and start-up ----------------------------------------------
 
 function showRecent(recent) {
   $("recent").replaceChildren(...recent.map((f) => el("option", { value: f })));
-  $("recent-list").replaceChildren(
-    ...recent.map((f) => el("li", {}, el("button", { type: "button", title: f, onclick: () => check(f) }, f))));
+  $("recent-heading").hidden = recent.length === 0;
+  $("recent-list").replaceChildren(...recent.map((f) => {
+    const parts = f.split(/[\\/]/).filter(Boolean);
+    const name = parts.pop() || f;
+    return el("li", {}, el("button", { type: "button", title: f, onclick: () => check(f) },
+      el("span", { class: "name" }, name),
+      el("span", { class: "where" }, parts.join(f.includes("\\") ? "\\" : "/"))));
+  }));
 }
 
 async function loadRecent() {

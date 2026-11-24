@@ -138,14 +138,14 @@ function renderRules() {
   $("rules-page").replaceChildren(
     el("header", {},
       el("h1", {}, "Rules"),
-      el("p", { class: "where" },
-        d.exists ? "Saved in " : "No rules file yet. Saving creates ",
-        el("code", {}, d.path),
-        ". The command line and CI read the same file.")),
+      el("p", { class: "where", title: d.path },
+        d.exists ? "In " : "Saving creates ",
+        el("code", {}, shortConfigPath(d.path)),
+        d.exists ? ", which the command line and CI also read." : ".")),
     presetSection(d),
-    el("h2", {}, "Checks"),
-    el("p", { class: "section-help" }, "Set how strict each check is, and its limits."),
-    el("div", { class: "rule-grid" }, d.rules.map((r, i) => ruleCard(r, i))),
+    el("section", {},
+      el("h2", {}, "Checks"),
+      el("div", { class: "rule-grid" }, d.rules.map((r, i) => ruleCard(r, i)))),
     customSection(d),
     overridesSection(d),
     excludeSection(d),
@@ -165,15 +165,16 @@ function presetSection(d) {
         toast("Preset changed. Save to see its settings in the checks below.");
       },
     }, p.label));
-  description.textContent = options.find((p) => p.id === d.preset)?.description || "";
+  description.textContent = (options.find((p) => p.id === d.preset)?.description || "") +
+    (d.preset ? " Your own settings below win over the preset." : "");
   return el("section", {},
     el("h2", {}, "Preset"),
-    el("p", { class: "section-help" }, "Start from an engine's conventions. Your own settings below win over the preset."),
-    el("div", { class: "presets" }, buttons), description);
+    el("div", { class: "presets segmented", role: "group", "aria-label": "Preset" }, buttons),
+    description);
 }
 
 function ruleCard(rule, ruleIndex) {
-  const card = el("article", { class: `card rule-card${rule.severity.value === "off" ? " is-off" : ""}` });
+  const card = el("article", { class: `rule-card${rule.severity.value === "off" ? " is-off" : ""}` });
   card.append(
     el("div", { class: "rule-top" },
       el("div", {}, el("h3", {}, rule.id), el("p", {}, rule.description)),
@@ -283,7 +284,7 @@ function mapInput(map, onChange, valueKind) {
         el("input", { type: "text", value: row[1], placeholder: valueKind === "size" ? "8MB" : "T_",
           "aria-label": "Value", oninput: (e) => { row[1] = e.target.value; emit(); } }),
         el("button", { type: "button", class: "icon-button", title: "Remove", "aria-label": "Remove",
-          onclick: () => { rows.splice(i, 1); draw(); emit(); } }, "×"))),
+          onclick: () => { rows.splice(i, 1); draw(); emit(); } }, icon("close")))),
       el("button", { type: "button", class: "link-button",
         onclick: () => { rows.push(["", ""]); draw(); } }, "+ Add file type"));
   };
@@ -352,7 +353,7 @@ function customCard(rule, index, fields) {
           placeholder: "hero-textures", oninput: (e) => { rule.id = e.target.value.trim(); changed(); } })),
       el("div", { class: "field grow" },
         el("label", { for: `${id}-description` }, "What it checks"),
-        el("input", { type: "text", id: `${id}-description`, value: rule.description || "",
+        el("input", { type: "text", id: `${id}-description`, class: "prose", value: rule.description || "",
           placeholder: "Hero textures are square and at most 4K",
           oninput: (e) => { setOrDrop(rule, "description", e.target.value.trim() || null); changed(); } })),
       severityControl(rule.severity || "error", (v) => { rule.severity = v; renderRules(); }),
@@ -373,7 +374,7 @@ function requirementRow(rule, field, redraw) {
       field.help ? el("div", { class: "hint" }, field.help) : ""),
     el("button", { type: "button", class: "icon-button", title: "Remove requirement",
       "aria-label": "Remove requirement",
-      onclick: () => { delete rule[field.key]; redraw(); changed(); } }, "×"));
+      onclick: () => { delete rule[field.key]; redraw(); changed(); } }, icon("close")));
 }
 
 function setOrDrop(obj, key, value) {
@@ -462,14 +463,14 @@ function settingRow(setting, options, onRemove, onChange) {
   } }, options.map((o) => el("option", { value: o.key, selected: o.key === option.key }, o.label)));
   drawValue(option.kind);
   return el("div", { class: "override setting-row" }, select, valueBox,
-    el("button", { type: "button", class: "icon-button", title: "Remove setting", "aria-label": "Remove setting", onclick: onRemove }, "×"));
+    el("button", { type: "button", class: "icon-button", title: "Remove setting", "aria-label": "Remove setting", onclick: onRemove }, icon("close")));
 }
 
 function excludeSection(d) {
   return el("section", {},
     el("h2", {}, "Ignored paths"),
     el("p", { class: "section-help" }, "One pattern per line. A pattern ending in / skips that whole folder; * matches anything."),
-    el("div", { class: "card field" },
+    el("div", { class: "field exclude" },
       el("textarea", { "aria-label": "Ignored paths", spellcheck: false, placeholder: "build/\n*_backup.*",
         value: (d.exclude || []).join("\n"),
         oninput: (e) => { d.exclude = e.target.value.split("\n").map((l) => l.trim()).filter(Boolean); changed(); } })));

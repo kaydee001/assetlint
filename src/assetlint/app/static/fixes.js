@@ -35,7 +35,7 @@ function dialogHead(path) {
     el("h2", {}, "Fix ", el("code", {}, path)),
     el("button", {
       type: "button", class: "icon-button", "aria-label": "Close", onclick: () => $("fix-dialog").close(),
-    }, "×"));
+    }, icon("close")));
 }
 
 function fixSection(fix) {
@@ -60,8 +60,12 @@ function fixSection(fix) {
         fingerprint: current.fingerprint, name: current.name,
       });
       $("fix-dialog").close();
-      toast(`Done: ${done.done}`);
-      check(state.data.folder);
+      await check(state.data.folder);
+      // Say what the fix did and what's left: the progress is the reward.
+      const left = state.data ? state.data.errors + state.data.warnings : null;
+      toast(left === null ? done.done
+        : left === 0 ? `${done.done}. Nothing left to fix.`
+        : `${done.done}. ${plural(left, "problem")} left.`);
     } catch (error) {
       body.append(el("p", { class: "fix-blocked" }, error.message));
       apply.disabled = false;

@@ -37,21 +37,23 @@
     <main class="layout">
       <aside class="sidebar" id="sidebar" hidden>
         <section class="summary" id="summary"></section>
-        <section>
+        <section id="severity-section">
           <h2>Severity</h2>
           <div class="toggles" id="severity-filters"></div>
         </section>
         <section>
-          <h2>Rules</h2>
+          <h2>By rule</h2>
           <ul class="rule-list" id="rule-filters"></ul>
         </section>
         <p class="config" id="config"></p>
       </aside>
 
       <section class="results" id="results">
-        <div class="empty" id="welcome">
+        <div class="empty welcome" id="welcome">
           <h1>Check an asset folder</h1>
-          <p>Paste a folder path above, or pick one you checked before.</p>
+          <p>Finds bad names, oversized files and textures, triangle budgets, duplicates and broken
+            texture paths, by your team's rules.</p>
+          <h2 class="recent-heading" id="recent-heading" hidden>Recent</h2>
           <ul class="recent-list" id="recent-list"></ul>
         </div>
       </section>
