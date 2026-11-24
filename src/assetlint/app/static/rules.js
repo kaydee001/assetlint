@@ -18,7 +18,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function showView(view) {
   editor.view = view;
   history.replaceState(null, "", view === "rules" ? "#rules" : location.pathname + location.search);
-  for (const button of document.querySelectorAll("#tabs button")) {
+  for (const button of document.querySelectorAll("[data-view]")) {
     button.setAttribute("aria-pressed", String(button.dataset.view === view));
   }
   document.querySelector(".layout").hidden = view !== "problems";
@@ -28,7 +28,7 @@ function showView(view) {
   updateSavebar();
 }
 
-for (const button of document.querySelectorAll("#tabs button")) {
+for (const button of document.querySelectorAll("[data-view]")) {
   button.addEventListener("click", () => {
     if (editor.view === "rules" && isDirty() && button.dataset.view !== "rules" &&
         !confirm("Leave without saving your rule changes?")) return;

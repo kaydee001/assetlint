@@ -8,58 +8,71 @@
     <link rel="stylesheet" href="/static/app.css" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="brand">
-        <img src="/static/icon.svg" alt="" width="20" height="20" />
-        <span>Asset Lint</span>
-      </div>
-      <form class="folder" id="folder-form" autocomplete="off">
-        <label class="visually-hidden" for="folder">Asset folder</label>
-        <input id="folder" name="folder" list="recent" spellcheck="false"
-               placeholder="Paste a folder path, e.g. D:\game\assets" />
-        <datalist id="recent"></datalist>
-        <button type="button" id="browse" class="secondary" hidden>Browse…</button>
-        <button type="submit" id="check" title="Check this folder (F5 checks it again)">Check</button>
-      </form>
-      <nav class="tabs" id="tabs" aria-label="View">
-        <button type="button" data-view="problems" aria-pressed="true">Problems <span class="n" id="problems-count"></span></button>
-        <button type="button" data-view="rules" aria-pressed="false">Rules</button>
+    <div class="shell">
+      <!-- The rail: who we are at the top, settings-like places at the bottom. -->
+      <nav class="rail" aria-label="Asset Lint">
+        <div class="brand">
+          <img src="/static/icon.svg" alt="" width="22" height="22" />
+          <span>Asset Lint</span>
+        </div>
+        <button type="button" class="rail-item" data-view="rules" aria-pressed="false"
+                title="The rules for this folder">
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2.5 4.5h6M11.5 4.5h2M2.5 11.5h2M7.5 11.5h6" />
+            <circle cx="10" cy="4.5" r="1.5" /><circle cx="6" cy="11.5" r="1.5" />
+          </svg>
+          <span>Rules</span>
+        </button>
       </nav>
-    </header>
 
-    <main class="rules-page" id="rules-page" hidden></main>
+      <!-- The column: the folder bar on top of every screen, then that screen. -->
+      <div class="main">
+        <header class="head">
+          <form class="folder" id="folder-form" autocomplete="off">
+            <label class="visually-hidden" for="folder">Asset folder</label>
+            <input id="folder" name="folder" list="recent" spellcheck="false"
+                   placeholder="Paste a folder path, e.g. D:\game\assets" />
+            <datalist id="recent"></datalist>
+            <button type="button" id="browse" class="secondary" hidden>Browse…</button>
+            <button type="submit" id="check" title="Check this folder (F5 checks it again)">Check</button>
+          </form>
+          <nav class="tabs" id="tabs" aria-label="View">
+            <button type="button" data-view="problems" aria-pressed="true">Problems <span class="n" id="problems-count"></span></button>
+          </nav>
+        </header>
+
+        <main class="rules-page" id="rules-page" hidden></main>
+
+        <main class="layout">
+          <section class="filters" id="sidebar" aria-label="Filters" hidden>
+            <div class="summary" id="summary"></div>
+            <div class="chips" id="severity-section" role="group" aria-label="Severity">
+              <div class="toggles" id="severity-filters"></div>
+            </div>
+            <ul class="rule-list chips" id="rule-filters" aria-label="By rule"></ul>
+            <p class="config" id="config"></p>
+          </section>
+
+          <section class="results" id="results">
+            <div class="empty welcome" id="welcome">
+              <h1>Check an asset folder</h1>
+              <p>Finds bad names, oversized files and textures, triangle budgets, duplicates and broken
+                texture paths, by your team's rules.</p>
+              <div class="start"><button type="button" id="choose">Choose a folder…</button></div>
+              <h2 class="recent-heading" id="recent-heading" hidden>Recent</h2>
+              <ul class="recent-list" id="recent-list"></ul>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
     <div class="save-error" id="save-error" role="alert" hidden></div>
     <div class="savebar" id="savebar" hidden>
       <span id="savebar-text">Unsaved changes</span>
       <button type="button" class="secondary" id="discard">Discard</button>
       <button type="button" id="save" title="Ctrl+S">Save and check</button>
     </div>
-
-    <main class="layout">
-      <aside class="sidebar" id="sidebar" hidden>
-        <section class="summary" id="summary"></section>
-        <section id="severity-section">
-          <h2>Severity</h2>
-          <div class="toggles" id="severity-filters"></div>
-        </section>
-        <section>
-          <h2>By rule</h2>
-          <ul class="rule-list" id="rule-filters"></ul>
-        </section>
-        <p class="config" id="config"></p>
-      </aside>
-
-      <section class="results" id="results">
-        <div class="empty welcome" id="welcome">
-          <h1>Check an asset folder</h1>
-          <p>Finds bad names, oversized files and textures, triangle budgets, duplicates and broken
-            texture paths, by your team's rules.</p>
-          <div class="start"><button type="button" id="choose">Choose a folder…</button></div>
-          <h2 class="recent-heading" id="recent-heading" hidden>Recent</h2>
-          <ul class="recent-list" id="recent-list"></ul>
-        </div>
-      </section>
-    </main>
 
     <dialog class="fix-dialog" id="fix-dialog" aria-label="Fix a file"></dialog>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
