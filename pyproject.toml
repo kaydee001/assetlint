@@ -61,6 +61,11 @@ strict = true
 files = ["src"]
 plugins = ["pydantic.mypy"]
 
+[[tool.mypy.overrides]]
+# pywebview is the optional `app` extra, so CI type-checks without it.
+module = ["webview"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
