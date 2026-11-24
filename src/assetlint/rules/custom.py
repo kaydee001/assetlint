@@ -19,6 +19,8 @@ class CustomRule(Rule[CustomRuleConfig]):
         self.id = entry.id
         self.label = entry.id
         self.description = entry.description or f"Custom rule '{entry.id}'."
+        self.why = "A rule your team added for its own workflow."
+        self.how = summary(entry)
         self._config = config or Config()
         self._locator = ReferencesRule()  # finds files by listing folders, so case counts
 
@@ -52,6 +54,34 @@ class CustomRule(Rule[CustomRuleConfig]):
         if prefix and asset.stem.startswith(prefix) and len(asset.stem) > len(prefix):
             return asset.stem[len(prefix) :]
         return asset.stem
+
+
+def summary(entry: CustomRuleConfig) -> str:
+    """The rule in one plain sentence: "In characters/ (.png, .tga): square, at most 4096 px." """
+    where = " or ".join(entry.paths) if entry.paths else "every folder"
+    scope = f"In {where}" + (f" ({', '.join(entry.types)})" if entry.types else "")
+    if entry.forbidden:
+        return f"{scope}: these files aren't allowed."
+    musts = []
+    if entry.name_pattern:
+        musts.append(f"names match {entry.name_pattern}")
+    if entry.max_size is not None:
+        musts.append(f"at most {human_size(entry.max_size)}")
+    if entry.min_triangles is not None or entry.max_triangles is not None:
+        musts.append(_range("triangles", entry.min_triangles, entry.max_triangles))
+    if entry.min_texture_size is not None or entry.max_texture_size is not None:
+        musts.append(_range("px a side", entry.min_texture_size, entry.max_texture_size))
+    if entry.square:
+        musts.append("square")
+    if entry.requires:
+        musts.append("next to " + ", ".join(entry.requires))
+    return f"{scope}: {', '.join(musts)}."
+
+
+def _range(unit: str, low: int | None, high: int | None) -> str:
+    if low is not None and high is not None:
+        return f"{low:,} to {high:,} {unit}"
+    return f"at least {low:,} {unit}" if low is not None else f"at most {high:,} {unit}"
 
 
 def _triangles(asset: Asset, config: CustomRuleConfig) -> Iterator[str]:

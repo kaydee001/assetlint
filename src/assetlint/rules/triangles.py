@@ -14,6 +14,8 @@ class TrianglesRule(Rule[TrianglesRuleConfig]):
     id = "triangles"
     label = "Triangle budget"
     description = "Meshes stay within the triangle budget."
+    why = "Every triangle costs frame time on the target hardware."
+    how = "Reduce the mesh, retopologise it, or add LODs."
 
     def check(self, asset: Asset, config: TrianglesRuleConfig) -> Iterator[str]:
         budget = config.max

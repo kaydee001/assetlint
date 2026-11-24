@@ -17,6 +17,8 @@ class DuplicatesRule(Rule[DuplicatesRuleConfig]):
     id = "duplicates"
     label = "Duplicates"
     description = "No two files have the same content."
+    why = "Copies drift apart: someone fixes one, and the other one ships."
+    how = "Keep one copy and point everything at it. Fix… moves the extra copy to the trash."
 
     def __init__(self) -> None:
         self._by_size: dict[int, list[Asset]] = defaultdict(list)

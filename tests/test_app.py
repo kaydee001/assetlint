@@ -143,3 +143,37 @@ def test_info_needs_the_token(server: AppServer) -> None:
     assert request(server, "GET", "/api/info", headers={"X-Assetlint-Token": ""})[0] == 403
     status, data = request(server, "GET", "/api/info")
     assert status == 200 and "recent" in data
+
+
+# --- overview data ---------------------------------------------------------------
+
+
+def test_check_describes_what_is_in_the_folder(samples: Path) -> None:
+    data = api.check(str(samples / "bad"))
+    inv = data["inventory"]
+    assert inv["files"] == data["files_checked"] == 17
+    assert inv["total_size"] == sum(t["size"] for t in inv["by_type"])
+    assert {t["type"] for t in inv["by_type"]} >= {".obj", ".png"}
+    sizes = [f["size"] for f in inv["largest_files"]]
+    assert sizes == sorted(sizes, reverse=True) and len(sizes) <= 5
+    assert inv["heaviest_meshes"][0]["path"] == "SM_Dense.obj"
+    assert inv["unreadable"] >= 1  # SM_Broken.glb
+
+
+def test_check_gives_the_facts_behind_each_problem(samples: Path) -> None:
+    data = api.check(str(samples / "bad"))
+    assert set(data["files"]) == {f["path"] for f in data["findings"]}
+    assert data["files"]["SM_Dense.obj"]["triangles"] == 600
+    naming = data["files"]["Cube.001.obj"]["naming"]
+    assert naming["prefix"] == "SM_"
+    assert naming["suggested"] == "SM_Cube.obj"
+
+
+def test_every_rule_says_why_it_matters_and_how_to_fix_it(tmp_path: Path) -> None:
+    (tmp_path / "assetlint.toml").write_text(
+        '[[custom]]\nid = "ui"\npaths = ["ui/"]\ntypes = [".png"]\n'
+        "square = true\nmax_texture_size = 512\n"
+    )
+    rules = {r["id"]: r for r in api.check(str(tmp_path))["rules"]}
+    assert all(r["why"] and r["how"] for r in rules.values())
+    assert rules["ui"]["how"] == "In ui/ (.png): at most 512 px a side, square."

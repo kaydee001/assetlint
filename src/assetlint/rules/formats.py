@@ -30,6 +30,8 @@ class FormatsRule(Rule[FormatsRuleConfig]):
     id = "formats"
     label = "File type"
     description = "Only allowed file types, and no empty, corrupt or misnamed files."
+    why = "Engines and tools reject unknown, empty or mislabelled files, often without saying why."
+    how = "Export it again in one of the allowed formats; re-export files that are empty or broken."
 
     def check(self, asset: Asset, config: FormatsRuleConfig) -> Iterator[str]:
         allowed = config.allowed

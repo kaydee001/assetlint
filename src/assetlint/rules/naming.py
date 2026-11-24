@@ -16,6 +16,11 @@ class NamingRule(Rule[NamingRuleConfig]):
     id = "naming"
     label = "Naming"
     description = "File names follow the naming pattern and the prefix for their type."
+    why = "Engine import rules, scripts and search all rely on names that follow one convention."
+    how = (
+        "Rename it to match the pattern and prefix. "
+        "Fix… renames it and updates the files that use it."
+    )
 
     def check(self, asset: Asset, config: NamingRuleConfig) -> Iterator[str]:
         stem = asset.stem

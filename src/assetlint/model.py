@@ -81,6 +81,8 @@ class RuleInfo:
     default_severity: str  # "error", "warn" or "off"
     custom: bool = False
     label: str = ""
+    why: str = ""
+    how: str = ""
 
 
 @dataclass
@@ -88,6 +90,7 @@ class Result:
     files_checked: int = 0
     findings: list[Finding] = field(default_factory=list)
     rules: list[RuleInfo] = field(default_factory=list)  # the engine fills it
+    assets: list[Asset] = field(default_factory=list)  # what was checked, for the app's overview
 
     @property
     def errors(self) -> int:

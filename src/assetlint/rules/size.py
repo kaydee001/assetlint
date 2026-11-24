@@ -13,6 +13,8 @@ class SizeRule(Rule[SizeRuleConfig]):
     id = "size"
     label = "File size"
     description = "Files stay under the size limit for their type."
+    why = "Large files slow down the repository, builds and downloads, and can hit platform limits."
+    how = "Compress the texture, reduce the mesh, or split the file."
 
     def check(self, asset: Asset, config: SizeRuleConfig) -> Iterator[str]:
         limit = config.max_by_type.get(asset.ext, config.max)

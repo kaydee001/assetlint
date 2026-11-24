@@ -82,7 +82,9 @@ def run(
     ]
     settings = {asset: config.rules_for(asset.rel) for asset in assets}
     rules = build_rules(config)
-    result = Result(files_checked=len(assets), rules=[rule_info(rule) for rule in rules])
+    result = Result(
+        files_checked=len(assets), rules=[rule_info(rule) for rule in rules], assets=assets
+    )
 
     def add(rule: Rule[Any], asset: Asset, message: str) -> None:
         rule_config = rule.settings(settings[asset], asset)
@@ -110,6 +112,8 @@ def rule_info(rule: Rule[Any]) -> RuleInfo:
     severity a custom rule is written with."""
     if isinstance(rule, CustomRule):
         info = RuleInfo(rule.id, rule.description, rule.entry.severity, custom=True)
-        return replace(info, label=rule.label)
+        return replace(info, label=rule.label, why=rule.why, how=rule.how)
     severity = getattr(RulesConfig(), rule.id).severity
-    return RuleInfo(rule.id, rule.description, severity, label=rule.label or rule.id)
+    return RuleInfo(
+        rule.id, rule.description, severity, label=rule.label or rule.id, why=rule.why, how=rule.how
+    )

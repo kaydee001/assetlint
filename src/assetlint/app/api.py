@@ -42,6 +42,7 @@ def check(folder: str) -> dict[str, Any]:
         for f in result.findings
     ]
     from assetlint.app.fixes import Project, fixable  # fixes builds on this module
+    from assetlint.app.inventory import inventory, problem_files
 
     project = Project(target, config_path.parent if config_path else target, config)
     return {
@@ -52,11 +53,16 @@ def check(folder: str) -> dict[str, Any]:
         "warnings": result.warnings,
         "findings": findings,
         "fixable": sorted(fixable(project, findings)),
+        "preset": config.preset,
+        "inventory": inventory(result),
+        "files": problem_files(result, config),
         "rules": [
             {
                 "id": rule.id,
                 "label": rule.label or rule.id,
                 "description": rule.description,
+                "why": rule.why,
+                "how": rule.how,
                 "severity": rule.default_severity
                 if rule.custom
                 else getattr(config.rules, rule.id).severity,

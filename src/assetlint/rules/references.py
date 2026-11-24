@@ -20,6 +20,13 @@ class ReferencesRule(Rule[ReferencesRuleConfig]):
     id = "references"
     label = "Linked files"
     description = "Files a mesh refers to exist, with relative paths that work on every OS."
+    why = (
+        "A mesh pointing at a missing file, an absolute path or the wrong case "
+        "shows up untextured on other machines."
+    )
+    how = (
+        "Use relative paths with forward slashes and matching case. Fix… repairs slashes and case."
+    )
 
     def __init__(self) -> None:
         self._listings: dict[Path, list[str] | None] = {}

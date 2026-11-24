@@ -14,6 +14,8 @@ class TexturesRule(Rule[TexturesRuleConfig]):
     id = "textures"
     label = "Texture size"
     description = "Textures have power-of-two sizes within the maximum."
+    why = "Odd-sized or oversized textures waste memory and break mipmaps on some platforms."
+    how = "Resize it to a power of two within the limit, such as 1024 or 2048."
 
     def check(self, asset: Asset, config: TexturesRuleConfig) -> Iterator[str]:
         image = asset.image
