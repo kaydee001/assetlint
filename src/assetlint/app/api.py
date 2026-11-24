@@ -15,6 +15,7 @@ from typing import Any
 from assetlint import __version__
 from assetlint.config import ConfigError, find_config, load_config
 from assetlint.engine import run
+from assetlint.rules import BUILTIN_RULES
 
 STATE_FILE = Path.home() / ".assetlint" / "app.json"
 MAX_RECENT = 8
@@ -79,6 +80,11 @@ def info(start_folder: Path | None, can_browse: bool) -> dict[str, Any]:
         "start_folder": str(start_folder) if start_folder else None,
         "recent": recent(),
         "can_browse": can_browse,
+        # What the built-in checks look for, so the welcome screen can say so before any check.
+        "checks": [
+            {"id": r.id, "label": r.label or r.id, "description": r.description}
+            for r in BUILTIN_RULES
+        ],
     }
 
 

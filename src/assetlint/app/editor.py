@@ -145,6 +145,7 @@ def load_settings(folder_text: str) -> dict[str, Any]:
                 "id": rule.id,
                 "label": rule.label or rule.id,
                 "description": rule.description,
+                "why": rule.why,
                 "severity": {"value": effective.severity, "set": "severity" in own},
                 "fields": [
                     {

@@ -9,14 +9,22 @@
   </head>
   <body>
     <div class="shell">
-      <!-- The rail: who we are at the top, settings-like places at the bottom. -->
+      <!-- The rail: the three places in the app. Rules sits at the bottom, like settings. -->
       <nav class="rail" aria-label="Asset Lint">
         <div class="brand">
           <img src="/static/icon.svg" alt="" width="22" height="22" />
           <span>Asset Lint</span>
         </div>
-        <button type="button" class="rail-item" data-view="problems" aria-pressed="true"
-                title="Problems in this folder">
+        <button type="button" class="rail-item" data-view="overview" aria-pressed="true"
+                title="Overview: how healthy the folder is and what to do next">
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+            <rect x="2.25" y="2.25" width="5" height="5" rx="1" /><rect x="8.75" y="2.25" width="5" height="5" rx="1" />
+            <rect x="2.25" y="8.75" width="5" height="5" rx="1" /><rect x="8.75" y="8.75" width="5" height="5" rx="1" />
+          </svg>
+          <span>Overview</span>
+        </button>
+        <button type="button" class="rail-item" data-view="problems" aria-pressed="false"
+                title="Problems: every problem, grouped by check, with how to fix it">
           <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M6 4.5h7.5M6 8h7.5M6 11.5h7.5" />
             <path d="M2.5 4.5h.01M2.5 8h.01M2.5 11.5h.01" />
@@ -25,7 +33,7 @@
           <span class="badge" id="problems-count" hidden></span>
         </button>
         <button type="button" class="rail-item bottom" data-view="rules" aria-pressed="false"
-                title="The rules for this folder">
+                title="Rules: what this folder is checked against">
           <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M2.5 4.5h6M11.5 4.5h2M2.5 11.5h2M7.5 11.5h6" />
             <circle cx="10" cy="4.5" r="1.5" /><circle cx="6" cy="11.5" r="1.5" />
@@ -47,34 +55,9 @@
           </form>
         </header>
 
-        <main class="rules-page" id="rules-page" hidden></main>
-
-        <main class="layout">
-          <section class="filters" id="sidebar" aria-label="Filters" hidden>
-            <div class="filters-top">
-              <div class="summary" id="summary"></div>
-              <p class="config" id="config"></p>
-              <div class="search" id="search-slot"></div>
-            </div>
-            <div class="filters-chips">
-              <div class="chips" id="severity-section" role="group" aria-label="Severity">
-                <div class="toggles" id="severity-filters"></div>
-              </div>
-              <ul class="rule-list chips" id="rule-filters" aria-label="By rule"></ul>
-            </div>
-          </section>
-
-          <section class="results" id="results">
-            <div class="empty welcome" id="welcome">
-              <h1>Check an asset folder</h1>
-              <p>Finds bad names, oversized files and textures, triangle budgets, duplicates and broken
-                texture paths, by your team's rules.</p>
-              <div class="start"><button type="button" id="choose">Choose a folder…</button></div>
-              <h2 class="recent-heading" id="recent-heading" hidden>Recent</h2>
-              <ul class="recent-list" id="recent-list"></ul>
-            </div>
-          </section>
-        </main>
+        <main class="page" id="overview-page"></main>
+        <main class="page" id="problems-page" hidden></main>
+        <main class="page rules-page" id="rules-page" hidden></main>
       </div>
     </div>
 

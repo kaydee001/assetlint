@@ -13,39 +13,19 @@ const editor = {
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-// --- switching views ---------------------------------------------------------
+// --- following the app ---------------------------------------------------------
+// app.js owns the views (showView); it tells this file when a folder has been checked.
 
-function showView(view) {
-  editor.view = view;
-  history.replaceState(null, "", view === "rules" ? "#rules" : location.pathname + location.search);
-  for (const button of document.querySelectorAll("[data-view]")) {
-    button.setAttribute("aria-pressed", String(button.dataset.view === view));
-  }
-  document.querySelector(".layout").hidden = view !== "problems";
-  $("rules-page").hidden = view !== "rules";
-  if (view !== "rules") showSaveError(null);
-  if (view === "rules") loadSettings();
-  updateSavebar();
-}
-
-for (const button of document.querySelectorAll("[data-view]")) {
-  button.addEventListener("click", () => {
-    if (editor.view === "rules" && isDirty() && button.dataset.view !== "rules" &&
-        !confirm("Leave without saving your rule changes?")) return;
-    if (button.dataset.view === "problems" && isDirty()) discard();
-    showView(button.dataset.view);
-  });
-}
-
-// Called by app.js after every successful check.
-function afterCheck(folder) {
+function rulesFolderChecked(folder) {
   if (editor.folder !== folder) {
     editor.folder = folder;
     editor.original = editor.draft = null;
   }
   if (editor.view === "rules") loadSettings();
-  else if (location.hash === "#rules") showView("rules");
 }
+
+const RULES_PURPOSE = "What this folder is checked against. Changes are saved to its assetlint.toml, " +
+  "so the command line and CI use the same rules.";
 
 // --- loading and saving ---------------------------------------------------------
 
@@ -54,15 +34,15 @@ async function loadSettings(force = false) {
     // Rules aren't global: each project keeps its own in assetlint.toml, so say where they
     // live and offer the one step that gets there.
     $("rules-page").replaceChildren(
-      el("div", { class: "empty welcome" },
-        el("h1", {}, "Rules belong to a folder"),
-        el("p", {},
+      pageHeader("Rules", RULES_PURPOSE),
+      card({ class: "empty-card" },
+        el("h2", {}, "Rules belong to a folder"),
+        el("p", { class: "muted" },
           "Each project keeps its rules in an ", el("code", {}, "assetlint.toml"),
-          " file in its folder, so the command line and CI use the same ones. Choose a folder to see " +
-          "and change its rules. If it has no rules file yet, saving creates one."),
-        el("div", { class: "start" },
-          el("button", { type: "button", onclick: () => $("choose").click() },
-            $("browse").hidden ? "Paste a folder path above" : "Choose a folder…"))));
+          " file in its folder. Choose a folder to see and change its rules. If it has no rules " +
+          "file yet, saving creates one."),
+        el("button", { type: "button", onclick: chooseFolder },
+          $("browse").hidden ? "Paste a folder path above" : "Choose a folder…")));
     return;
   }
   if (editor.draft && !force) return renderRules();
@@ -185,21 +165,19 @@ function placeName(path) {
 function renderRules() {
   const d = editor.draft;
   $("rules-page").replaceChildren(
-    el("header", {},
-      el("h1", {}, "Rules"),
-      el("p", { class: "where", title: d.path },
-        d.exists ? "In " : "Saving creates ",
-        el("code", {}, shortConfigPath(d.path)),
-        d.exists ? ", which the command line and CI also read." : ".")),
-    presetSection(d),
-    el("section", {},
-      el("h2", {}, "Checks"),
-      el("p", { class: "section-help" },
-        "Error: the check fails, in CI too. Warning: shown, but the check still passes. Off: not checked."),
-      el("div", { class: "rule-grid" }, d.rules.map((r, i) => ruleCard(r, i)))),
-    customSection(d),
-    overridesSection(d),
-    excludeSection(d),
+    pageHeader("Rules", [RULES_PURPOSE, " ",
+      el("span", { class: "where", title: d.path },
+        d.exists ? "File: " : "Saving creates ", el("code", {}, shortConfigPath(d.path)))]),
+    el("div", { class: "bento" },
+      presetSection(d),
+      el("div", { class: "group-head span-4" },
+        el("h2", {}, "Checks"),
+        el("p", { class: "muted" },
+          "Error: the check fails, in CI too. Warning: shown, but the check still passes. Off: not checked.")),
+      d.rules.map((r, i) => ruleCard(r, i)),
+      customSection(d),
+      overridesSection(d),
+      excludeSection(d)),
   );
   updateSavebar();
 }
@@ -218,23 +196,25 @@ function presetSection(d) {
     }, p.label));
   description.textContent = (options.find((p) => p.id === d.preset)?.description || "") +
     (d.preset ? " Your own settings below win over the preset." : "");
-  return el("section", {},
-    el("h2", {}, "Preset"),
+  return card({ class: "span-4" },
+    cardTitle("Preset", "start from an engine's conventions"),
     el("div", { class: "presets segmented", role: "group", "aria-label": "Preset" }, buttons),
     description);
 }
 
 function ruleCard(rule, ruleIndex) {
-  const card = el("article", { class: `rule-card${rule.severity.value === "off" ? " is-off" : ""}` });
-  card.append(
+  const box = el("article", { class: `card span-2 rule-card${rule.severity.value === "off" ? " is-off" : ""}` });
+  box.append(
     el("div", { class: "rule-top" },
-      el("div", {}, el("h3", { title: `${rule.id} in assetlint.toml` }, rule.label || rule.id),
-        el("p", {}, rule.description)),
-      severityControlFor(rule, card)),
+      el("div", {},
+        el("h3", { title: `${rule.id} in assetlint.toml` }, rule.label || rule.id),
+        el("p", {}, rule.description),
+        rule.why ? el("p", { class: "why" }, rule.why) : null),
+      severityControlFor(rule, box)),
     rule.fields.length
       ? el("div", { class: "rule-fields" }, rule.fields.map((f, i) => fieldRow(f, ruleIndex, i)))
-      : "");
-  return card;
+      : el("p", { class: "muted small" }, "Nothing to set: it's on or off."));
+  return box;
 }
 
 function severityControlFor(rule, card) {
@@ -347,7 +327,7 @@ function mapInput(map, onChange, valueKind) {
 // --- custom rules ------------------------------------------------------------------
 
 function customSection(d) {
-  return el("section", {},
+  return el("section", { class: "group span-4" },
     el("h2", {}, "Your rules"),
     el("p", { class: "section-help" },
       "Rules for your team's workflow: pick the files, then what they must be. " +
@@ -451,7 +431,7 @@ function overrideSettingOptions() {
 function overridesSection(d) {
   const options = overrideSettingOptions();
   const cards = d.overrides.map((override, index) => overrideCard(override, index, options));
-  return el("section", {},
+  return el("section", { class: "group span-4" },
     el("h2", {}, "Folder overrides"),
     el("p", { class: "section-help" },
       "Different settings for some folders, e.g. a bigger triangle budget for characters/. When several match, the last one wins."),
@@ -520,7 +500,7 @@ function settingRow(setting, options, onRemove, onChange) {
 }
 
 function excludeSection(d) {
-  return el("section", {},
+  return card({ class: "span-4" },
     el("h2", {}, "Ignored paths"),
     el("p", { class: "section-help" }, "One pattern per line. A pattern ending in / skips that whole folder; * matches anything."),
     el("div", { class: "field exclude" },
