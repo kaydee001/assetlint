@@ -21,7 +21,7 @@
   --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
   --radius: 6px;
   --control: 30px;          /* height of every input and button */
-  --rail: 68px;
+  --rail: 72px;
   --column: 920px;          /* every screen's width, under the folder bar */
   /* 4px base: tight groups (4, 8), rows (12), sections (20, 28) */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 28px; --s7: 40px;
@@ -119,7 +119,7 @@ kbd {
 .brand, .rail-item {
   width: calc(var(--rail) - 12px);
   display: flex; flex-direction: column; align-items: center; gap: 3px;
-  font-size: 10.5px; line-height: 1.2; text-align: center;
+  font-size: 11.5px; line-height: 1.2; text-align: center;
 }
 .brand { font-weight: 600; color: var(--text); padding: var(--s1) 0 var(--s2); }
 .rail-item {
@@ -131,7 +131,7 @@ kbd {
 .rail-item .badge {
   position: absolute; top: 1px; right: 1px; min-width: 17px; height: 15px; padding: 0 4px;
   border-radius: 999px; background: var(--raised); border: 1px solid var(--line-strong);
-  color: var(--text); font-size: 10px; font-weight: 600; line-height: 13px; font-variant-numeric: tabular-nums;
+  color: var(--text); font-size: 11px; font-weight: 600; line-height: 13px; font-variant-numeric: tabular-nums;
 }
 .brand { margin-bottom: var(--s2); }
 .rail-item:hover { background: var(--raised); color: var(--text); }
