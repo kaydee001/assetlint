@@ -374,7 +374,7 @@ def format_validation_error(path: Path, exc: ValidationError) -> str:
     lines = [f"{path}: invalid config"]
     for error in exc.errors():
         location = ".".join(str(part) for part in error["loc"]) or "(top level)"
-        message = error["msg"]
+        message = error["msg"].removeprefix("Value error, ")  # pydantic's wrapper on our messages
         if error["type"] == "extra_forbidden":
             message = "unknown key"
         lines.append(f"  {location}: {message}")

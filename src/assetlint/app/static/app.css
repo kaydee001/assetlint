@@ -5,7 +5,7 @@
   --line: #2f3236;
   --text: #e4e4e2;
   --muted: #9a9c9f;
-  --faint: #6c6f73;
+  --faint: #8b8e93; /* 5.4:1 on the background, 4.5:1 on raised panels */
   --accent: #e8a33d;
   --error: #f0716a;
   --error-bg: rgba(240, 113, 106, 0.1);
@@ -25,6 +25,7 @@
 * { box-sizing: border-box; }
 ::selection { background: rgba(232, 163, 61, 0.32); color: var(--text); }
 input, textarea { caret-color: var(--accent); }
+::placeholder { color: var(--faint); opacity: 1; }
 
 .icon {
   width: 16px; height: 16px; flex-shrink: 0;
@@ -124,7 +125,9 @@ button:focus-visible, input:focus-visible, .rule-list button:focus-visible { out
 
 /* --- results ---------------------------------------------------------- */
 
-.results { padding: var(--s5) var(--s6) var(--s7); min-width: 0; }
+.results { padding: var(--s5) var(--s6) var(--s7); min-width: 0; transition: opacity 150ms ease-out; }
+/* while a check runs, the old results stay but fade, so it's clear they're about to change */
+.results[aria-busy="true"] { opacity: 0.45; pointer-events: none; }
 
 .empty { max-width: 520px; margin: 14vh auto 0; text-align: center; }
 .empty h1 { font-size: 20px; margin-bottom: var(--s2); }
@@ -379,3 +382,16 @@ button:focus-visible, input:focus-visible, .rule-list button:focus-visible { out
 .custom-rule .setting-row textarea:focus, .custom-rule .setting-row input:focus { outline: none; border-color: var(--accent); }
 .custom-rule .setting-row .hint { color: var(--faint); font-size: 12px; margin-top: 3px; }
 .custom-rule .setting-row .icon-button { padding-top: 6px; }
+
+/* --- save errors: next to the Save button, in plain words --------------- */
+
+.save-error {
+  position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%);
+  width: min(640px, calc(100vw - 48px));
+  background: var(--panel); border: 1px solid var(--error); border-radius: 8px;
+  padding: var(--s3) var(--s4); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); z-index: 3;
+}
+.save-error h2 { margin: 0 0 var(--s1); font-size: 14px; color: var(--error); }
+.save-error ul { margin: 0; padding-left: 18px; }
+.save-error li + li { margin-top: 2px; }
+.save-error .where { color: var(--muted); }

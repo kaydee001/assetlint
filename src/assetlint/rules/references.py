@@ -18,6 +18,7 @@ _ABSOLUTE = re.compile(r"^([A-Za-z]:[\\/]|[\\/])")
 
 class ReferencesRule(Rule[ReferencesRuleConfig]):
     id = "references"
+    label = "Linked files"
     description = "Files a mesh refers to exist, with relative paths that work on every OS."
 
     def __init__(self) -> None:

@@ -12,6 +12,7 @@ from assetlint.rules.base import Rule
 
 class TexturesRule(Rule[TexturesRuleConfig]):
     id = "textures"
+    label = "Texture size"
     description = "Textures have power-of-two sizes within the maximum."
 
     def check(self, asset: Asset, config: TexturesRuleConfig) -> Iterator[str]:

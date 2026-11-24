@@ -80,6 +80,7 @@ class RuleInfo:
     description: str
     default_severity: str  # "error", "warn" or "off"
     custom: bool = False
+    label: str = ""
 
 
 @dataclass

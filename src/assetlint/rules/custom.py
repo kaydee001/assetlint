@@ -17,6 +17,7 @@ class CustomRule(Rule[CustomRuleConfig]):
     def __init__(self, entry: CustomRuleConfig, config: Config | None = None) -> None:
         self.entry = entry
         self.id = entry.id
+        self.label = entry.id
         self.description = entry.description or f"Custom rule '{entry.id}'."
         self._config = config or Config()
         self._locator = ReferencesRule()  # finds files by listing folders, so case counts

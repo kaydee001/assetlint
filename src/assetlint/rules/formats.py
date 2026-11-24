@@ -28,6 +28,7 @@ _SIGNATURE_BYTES = max(len(sig) for sigs in _SIGNATURES.values() for sig in sigs
 
 class FormatsRule(Rule[FormatsRuleConfig]):
     id = "formats"
+    label = "File type"
     description = "Only allowed file types, and no empty, corrupt or misnamed files."
 
     def check(self, asset: Asset, config: FormatsRuleConfig) -> Iterator[str]:

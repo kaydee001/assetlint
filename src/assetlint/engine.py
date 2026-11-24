@@ -109,5 +109,7 @@ def rule_info(rule: Rule[Any]) -> RuleInfo:
     """A rule's id, description and severity before any config: the built-in default, or the
     severity a custom rule is written with."""
     if isinstance(rule, CustomRule):
-        return RuleInfo(rule.id, rule.description, rule.entry.severity, custom=True)
-    return RuleInfo(rule.id, rule.description, getattr(RulesConfig(), rule.id).severity)
+        info = RuleInfo(rule.id, rule.description, rule.entry.severity, custom=True)
+        return replace(info, label=rule.label)
+    severity = getattr(RulesConfig(), rule.id).severity
+    return RuleInfo(rule.id, rule.description, severity, label=rule.label or rule.id)

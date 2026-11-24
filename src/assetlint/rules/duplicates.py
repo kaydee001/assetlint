@@ -15,6 +15,7 @@ _CHUNK = 1 << 20
 
 class DuplicatesRule(Rule[DuplicatesRuleConfig]):
     id = "duplicates"
+    label = "Duplicates"
     description = "No two files have the same content."
 
     def __init__(self) -> None:

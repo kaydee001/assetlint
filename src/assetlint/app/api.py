@@ -55,6 +55,7 @@ def check(folder: str) -> dict[str, Any]:
         "rules": [
             {
                 "id": rule.id,
+                "label": rule.label or rule.id,
                 "description": rule.description,
                 "severity": rule.default_severity
                 if rule.custom

@@ -89,6 +89,7 @@ async function check(folder) {
   $("folder").value = folder;
   $("check").disabled = true;
   $("check").textContent = "Checking…";
+  $("results").setAttribute("aria-busy", "true");
   try {
     const data = await api("/api/check", { folder });
     const sameFolder = data.folder === state.data?.folder;
@@ -107,6 +108,7 @@ async function check(folder) {
   } finally {
     $("check").disabled = false;
     $("check").textContent = "Check";
+    $("results").removeAttribute("aria-busy");
   }
 }
 
@@ -204,7 +206,8 @@ function fileCard(path, items) {
     items.map((f) =>
       el("div", { class: `finding ${f.severity}` },
         icon(f.severity, f.severity === "warn" ? "Warning" : "Error"),
-        el("span", { class: "rule", title: rules.get(f.rule)?.description || "" }, f.rule),
+        el("span", { class: "rule", title: rules.get(f.rule)?.description || "" },
+          rules.get(f.rule)?.label || f.rule),
         el("span", { class: "msg" }, f.message))));
 }
 
@@ -250,7 +253,7 @@ function renderRuleFilters(data) {
   // Only the rules that found something: the Rules tab lists every rule and its settings.
   const items = data.rules
     .filter((rule) => counts.has(rule.id))
-    .map((rule) => button(rule.id, rule.id, counts.get(rule.id), rule.description));
+    .map((rule) => button(rule.id, rule.label || rule.id, counts.get(rule.id), rule.description));
   $("rule-filters").replaceChildren(button(null, "All rules", data.findings.length), ...items);
 }
 

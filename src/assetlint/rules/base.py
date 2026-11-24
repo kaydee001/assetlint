@@ -27,6 +27,7 @@ class Rule[C: RuleConfig](ABC):
 
     id: str
     description: str
+    label: str = ""  # a plain name for people, e.g. "Linked files"; the id stays in the config
 
     def settings(self, rules: RulesConfig, asset: Asset) -> C | None:
         """This rule's settings for `asset`, or None when the rule doesn't cover it."""

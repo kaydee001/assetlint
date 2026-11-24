@@ -12,6 +12,7 @@ from assetlint.rules.base import Rule
 
 class TrianglesRule(Rule[TrianglesRuleConfig]):
     id = "triangles"
+    label = "Triangle budget"
     description = "Meshes stay within the triangle budget."
 
     def check(self, asset: Asset, config: TrianglesRuleConfig) -> Iterator[str]:

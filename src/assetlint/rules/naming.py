@@ -14,6 +14,7 @@ _BLENDER_DUPLICATE_SUFFIX = re.compile(r"\.\d{3}$")
 
 class NamingRule(Rule[NamingRuleConfig]):
     id = "naming"
+    label = "Naming"
     description = "File names follow the naming pattern and the prefix for their type."
 
     def check(self, asset: Asset, config: NamingRuleConfig) -> Iterator[str]:

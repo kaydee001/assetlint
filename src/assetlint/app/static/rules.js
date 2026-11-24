@@ -23,6 +23,7 @@ function showView(view) {
   }
   document.querySelector(".layout").hidden = view !== "problems";
   $("rules-page").hidden = view !== "rules";
+  if (view !== "rules") showSaveError(null);
   if (view === "rules") loadSettings();
   updateSavebar();
 }
@@ -101,6 +102,7 @@ function updateSavebar() {
 }
 
 function discard() {
+  showSaveError(null);
   editor.draft = clone(editor.original);
   renderRules();
 }
@@ -110,11 +112,12 @@ async function save() {
   button.disabled = true;
   try {
     const result = await api("/api/settings/save", { folder: editor.folder, changes: changes() });
-    toast(result.created ? `Created ${result.path}` : `Saved ${result.path}`);
+    showSaveError(null);
+    toast(result.created ? `Created ${shortConfigPath(result.path)}` : `Saved ${shortConfigPath(result.path)}`);
     await loadSettings(true);
     await check(editor.folder);
   } catch (error) {
-    alert(`Not saved:\n\n${error.message}`);
+    showSaveError(error.message);
   } finally {
     button.disabled = false;
     updateSavebar();
@@ -130,7 +133,43 @@ window.addEventListener("beforeunload", (event) => {
 // --- rendering --------------------------------------------------------------------
 
 function changed() {
+  showSaveError(null); // the message was about the old values
   updateSavebar();
+}
+
+// The server explains what's wrong as "<file>: invalid config" plus one "  where: what" line
+// per problem. Show each in the app's own words, next to the Save button.
+function showSaveError(message) {
+  const box = $("save-error");
+  box.hidden = !message;
+  if (!message) return;
+  // Config keys (max_size) become the labels the form shows (largest file).
+  const keys = (editor.draft?.custom_fields || []).map((f) => [f.key, f.label.toLowerCase()]);
+  const plain = (text) => keys.reduce((t, [key, label]) => t.replaceAll(key, label), text);
+  const lines = plain(message).split("\n").map((l) => l.trim()).filter(Boolean);
+  const problems = lines.filter((l) => !/: invalid config$/.test(l)).map((line) => {
+    const at = line.indexOf(": ");
+    return at > 0 && !line.slice(0, at).includes(" ")
+      ? el("li", {}, el("span", { class: "where" }, `${placeName(line.slice(0, at))}: `), line.slice(at + 2))
+      : el("li", {}, line);
+  });
+  box.replaceChildren(el("h2", {}, "Not saved. Nothing in the file changed."), el("ul", {}, problems));
+}
+
+// "rules.size.max" -> "File size, max"; "custom.0.max_size" -> "Your rule hero-textures, max_size"
+function placeName(path) {
+  const [head, second, ...rest] = path.split(".");
+  const d = editor.draft;
+  if (head === "rules") {
+    const rule = d.rules.find((r) => r.id === second);
+    return [rule?.label || second, ...rest].join(", ");
+  }
+  if (head === "custom") {
+    const rule = d.custom[Number(second)];
+    return [`Your rule ${rule?.id || Number(second) + 1}`, ...rest].join(", ");
+  }
+  if (head === "overrides") return [`Folder override ${Number(second) + 1}`, ...rest].join(", ");
+  return path;
 }
 
 function renderRules() {
@@ -145,6 +184,8 @@ function renderRules() {
     presetSection(d),
     el("section", {},
       el("h2", {}, "Checks"),
+      el("p", { class: "section-help" },
+        "Error: the check fails, in CI too. Warning: shown, but the check still passes. Off: not checked."),
       el("div", { class: "rule-grid" }, d.rules.map((r, i) => ruleCard(r, i)))),
     customSection(d),
     overridesSection(d),
@@ -177,7 +218,8 @@ function ruleCard(rule, ruleIndex) {
   const card = el("article", { class: `rule-card${rule.severity.value === "off" ? " is-off" : ""}` });
   card.append(
     el("div", { class: "rule-top" },
-      el("div", {}, el("h3", {}, rule.id), el("p", {}, rule.description)),
+      el("div", {}, el("h3", { title: `${rule.id} in assetlint.toml` }, rule.label || rule.id),
+        el("p", {}, rule.description)),
       severityControlFor(rule, card)),
     rule.fields.length
       ? el("div", { class: "rule-fields" }, rule.fields.map((f, i) => fieldRow(f, ruleIndex, i)))
@@ -348,7 +390,7 @@ function customCard(rule, index, fields) {
   return el("article", { class: "card custom-rule" },
     el("div", { class: "custom-head" },
       el("div", { class: "field" },
-        el("label", { for: `${id}-id` }, "Rule id"),
+        el("label", { for: `${id}-id` }, "Short name"),
         el("input", { type: "text", id: `${id}-id`, value: rule.id || "", spellcheck: false,
           placeholder: "hero-textures", oninput: (e) => { rule.id = e.target.value.trim(); changed(); } })),
       el("div", { class: "field grow" },
@@ -387,9 +429,10 @@ function setOrDrop(obj, key, value) {
 function overrideSettingOptions() {
   const options = [];
   for (const rule of editor.draft.rules) {
-    options.push({ key: `${rule.id}.severity`, label: `${rule.id} · severity`, kind: "severity" });
+    const name = rule.label || rule.id;
+    options.push({ key: `${rule.id}.severity`, label: `${name} · how strict`, kind: "severity" });
     for (const f of rule.fields) {
-      if (f.kind !== "map") options.push({ key: `${rule.id}.${f.key}`, label: `${rule.id} · ${f.label.toLowerCase()}`, kind: f.kind });
+      if (f.kind !== "map") options.push({ key: `${rule.id}.${f.key}`, label: `${name} · ${f.label.toLowerCase()}`, kind: f.kind });
     }
   }
   return options;
