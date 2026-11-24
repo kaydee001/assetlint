@@ -19,10 +19,10 @@
                placeholder="Paste a folder path, e.g. D:\game\assets" />
         <datalist id="recent"></datalist>
         <button type="button" id="browse" class="secondary" hidden>Browse…</button>
-        <button type="submit" id="check">Check</button>
+        <button type="submit" id="check" title="Check this folder (F5 checks it again)">Check</button>
       </form>
       <nav class="tabs" id="tabs" aria-label="View" hidden>
-        <button type="button" data-view="problems" aria-pressed="true">Problems</button>
+        <button type="button" data-view="problems" aria-pressed="true">Problems <span class="n" id="problems-count"></span></button>
         <button type="button" data-view="rules" aria-pressed="false">Rules</button>
       </nav>
     </header>
@@ -32,7 +32,7 @@
     <div class="savebar" id="savebar" hidden>
       <span id="savebar-text">Unsaved changes</span>
       <button type="button" class="secondary" id="discard">Discard</button>
-      <button type="button" id="save">Save and check</button>
+      <button type="button" id="save" title="Ctrl+S">Save and check</button>
     </div>
 
     <main class="layout">
@@ -54,6 +54,7 @@
           <h1>Check an asset folder</h1>
           <p>Finds bad names, oversized files and textures, triangle budgets, duplicates and broken
             texture paths, by your team's rules.</p>
+          <div class="start"><button type="button" id="choose">Choose a folder…</button></div>
           <h2 class="recent-heading" id="recent-heading" hidden>Recent</h2>
           <ul class="recent-list" id="recent-list"></ul>
         </div>

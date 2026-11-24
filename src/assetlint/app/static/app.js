@@ -100,6 +100,7 @@ async function check(folder) {
     // How many problems this folder had before, so reaching zero can say what changed.
     state.before = sameFolder ? state.data.errors + state.data.warnings : null;
     state.data = data;
+    $("folder").value = data.folder; // the folder as resolved, so "Check again" matches it
     render();
     loadRecent();
     afterCheck(state.data.folder);
@@ -107,8 +108,8 @@ async function check(folder) {
     showError(error.message);
   } finally {
     $("check").disabled = false;
-    $("check").textContent = "Check";
     $("results").removeAttribute("aria-busy");
+    updateCheckButton();
   }
 }
 
@@ -140,6 +141,9 @@ function configNote(data) {
 
 function render() {
   const data = state.data;
+  const total = data.errors + data.warnings;
+  $("problems-count").textContent = total ? String(total) : "";
+  updateCheckButton();
   if (data.findings.length === 0) {
     $("sidebar").hidden = true; // nothing to filter
     $("results").replaceChildren(cleanState(data));
@@ -153,11 +157,13 @@ function render() {
   $("config").replaceChildren(configNote(data));
 
   const search = el("input", {
-    type: "search", placeholder: "Filter by file or message", value: state.query,
-    "aria-label": "Filter by file or message",
+    type: "search", id: "filter", placeholder: "Filter by file or message", value: state.query,
+    "aria-label": "Filter by file or message", "aria-keyshortcuts": "Control+F",
     oninput: (e) => { state.query = e.target.value; renderList(); },
   });
-  const toolbar = el("div", { class: "toolbar" }, search, el("span", { class: "shown", id: "shown" }));
+  const toolbar = el("div", { class: "toolbar" },
+    el("div", { class: "search" }, search, el("kbd", { "aria-hidden": "true" }, "Ctrl F")),
+    el("span", { class: "shown", id: "shown" }));
   $("results").replaceChildren(toolbar, el("div", { id: "list" }));
   renderList();
 }
@@ -282,12 +288,37 @@ $("folder-form").addEventListener("submit", (event) => {
   check($("folder").value);
 });
 
-$("browse").addEventListener("click", async () => {
+// "Check again" when the box holds the folder already shown, so the button says what it'll do.
+function updateCheckButton() {
+  const same = state.data && $("folder").value.trim() === state.data.folder;
+  if (!$("check").disabled) $("check").textContent = same ? "Check again" : "Check";
+}
+$("folder").addEventListener("input", updateCheckButton);
+
+async function pickFolder() {
   try {
     const { folder } = await api("/api/browse", {});
     if (folder) check(folder);
   } catch (error) {
     toast(error.message);
+  }
+}
+$("browse").addEventListener("click", pickFolder);
+$("choose").addEventListener("click", () => ($("browse").hidden ? $("folder").focus() : pickFolder()));
+
+// Shortcuts: Ctrl+F filters the problems, F5 checks the folder again, Ctrl+S saves the rules.
+document.addEventListener("keydown", (event) => {
+  const ctrl = event.ctrlKey || event.metaKey;
+  if (ctrl && event.key.toLowerCase() === "f" && $("filter") && $("rules-page").hidden) {
+    event.preventDefault();
+    $("filter").focus();
+    $("filter").select();
+  } else if (event.key === "F5" || (ctrl && event.key.toLowerCase() === "r")) {
+    event.preventDefault(); // a reload would drop unsaved rule changes
+    if (state.data && !$("check").disabled) check(state.data.folder);
+  } else if (ctrl && event.key.toLowerCase() === "s" && typeof isDirty === "function" && isDirty()) {
+    event.preventDefault();
+    $("save").click();
   }
 });
 
@@ -295,6 +326,7 @@ $("browse").addEventListener("click", async () => {
   try {
     const info = await api("/api/info");
     $("browse").hidden = !info.can_browse;
+    $("choose").textContent = info.can_browse ? "Choose a folder…" : "Paste a folder path above";
     showRecent(info.recent);
     if (info.start_folder) check(info.start_folder);
   } catch (error) {
